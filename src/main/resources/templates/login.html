@@ -1,29 +1,99 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Iniciar sesión</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>DEBUG Gym — Iniciar sesión</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        :root{ --bg:#0a0a0e; --card:#15151c; --ink:#f2f2f2; --muted:#b7b7c2; --acc:#ffc107; --line:#232334; }
+        body{
+            min-height:100vh; background:linear-gradient(180deg,rgba(0,0,0,.35),rgba(0,0,0,.75)),
+        url('https://png.pngtree.com/thumb_back/fh260/background/20240329/pngtree-rows-of-dumbbells-in-the-gym-image_15662386.jpg') center/cover no-repeat fixed;
+            color:var(--ink);
+        }
+        .brand { color:var(--acc); font-weight:900; letter-spacing:.5px; }
+        .login-card{
+            width: 100%; max-width: 420px; background:var(--card); border:1px solid var(--line);
+            border-radius:18px; box-shadow:0 18px 38px rgba(0,0,0,.45);
+        }
+        .form-control{
+            background:#0f0f15; border-color:#2a2a3a; color:var(--ink);
+        }
+        .form-control::placeholder{ color:#7e7e90 }
+        .btn-acc{ background:var(--acc); color:#111; font-weight:800; }
+        .btn-acc:hover{ filter:brightness(.95) }
+        .muted{ color:var(--muted) }
+        a.link { color:var(--acc); text-decoration:none; }
+        a.link:hover{ text-decoration:underline; }
+        .small-sep{ height:1px; background:#222339; margin:1rem 0; }
+    </style>
 </head>
-<body class="bg-light">
-<div class="container d-flex justify-content-center align-items-center vh-100">
-    <div class="card shadow p-4" style="width:22rem;">
-        <h3 class="text-center mb-4">Inicio de Sesión</h3>
+<body>
+<nav class="navbar navbar-dark" style="background:rgba(10,10,14,.55); backdrop-filter:blur(8px);">
+    <div class="container">
+        <a class="navbar-brand brand" href="/">DEBUG Gym</a>
+        <div class="d-none d-sm-flex gap-2">
+            <a class="btn btn-outline-warning btn-sm" href="/registro">Crear cuenta</a>
+            <a class="btn btn-outline-light btn-sm" href="/">Volver al inicio</a>
+        </div>
+    </div>
+</nav>
 
-        <form action="/login" method="post" th:object="${usuario}">
+<main class="container d-flex justify-content-center align-items-center" style="min-height:calc(100vh - 64px);">
+    <div class="login-card p-4 p-md-5">
+        <div class="text-center mb-3">
+            <div class="brand fs-4">Bienvenido de vuelta</div>
+            <div class="muted">Ingresa para continuar con tu entrenamiento</div>
+        </div>
+
+        <!-- Formulario -->
+        <form action="/login" method="post" th:object="${usuario}" novalidate>
             <div class="mb-3">
-                <label class="form-label">Correo</label>
-                <input type="email" th:field="*{correo}" class="form-control" placeholder="correo@ejemplo.com" required>
+                <label class="form-label">Correo electrónico</label>
+                <div class="input-group">
+            <span class="input-group-text bg-transparent text-warning border-secondary">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16">
+                <path d="M0 4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v.217L8 8.583 0 4.217V4z"/><path d="M0 4.697v7.104l5.803-3.558L0 4.697zM6.761 8.83l-6.57 4.03A2 2 0 0 0 2 14h12a2 2 0 0 0 1.809-1.141l-6.57-4.03L8 9.583l-1.239-.753zM10.197 8.243 16 11.801V4.697l-5.803 3.546z"/>
+              </svg>
+            </span>
+                    <input type="email" class="form-control" th:field="*{correo}" placeholder="tu@correo.com" required>
+                </div>
             </div>
-            <div class="mb-3">
+
+            <div class="mb-2">
                 <label class="form-label">Contraseña</label>
-                <input type="password" th:field="*{contrasena}" class="form-control" placeholder="********" required>
+                <div class="input-group">
+            <span class="input-group-text bg-transparent text-warning border-secondary">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16">
+                <path d="M8 1a4 4 0 0 0-4 4v2H3a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-1V5a4 4 0 0 0-4-4zm3 6H5V5a3 3 0 0 1 6 0v2z"/>
+              </svg>
+            </span>
+                    <input type="password" class="form-control" th:field="*{contrasena}" placeholder="••••••••" required>
+                </div>
             </div>
-            <button type="submit" class="btn btn-primary w-100">Ingresar</button>
-            <div th:if="${error}" class="alert alert-danger mt-3" th:text="${error}"></div>
+
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="remember">
+                    <label class="form-check-label muted" for="remember">Recordarme</label>
+                </div>
+                <a class="link" href="/forgot">¿Olvidaste tu contraseña?</a>
+            </div>
+
+            <button type="submit" class="btn btn-acc w-100">Ingresar</button>
+
+            <div th:if="${error}" class="alert alert-danger mt-3 mb-0" th:text="${error}"></div>
+
+            <div class="small-sep"></div>
+            <div class="text-center">
+                <span class="muted">¿Aún no tienes cuenta?</span>
+                <a class="link ms-1" href="/registro">Crear una cuenta</a>
+            </div>
         </form>
     </div>
-</div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
