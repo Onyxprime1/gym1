@@ -61,6 +61,6 @@ public class LoginController {
     // Redirigir raíz a /login
     @GetMapping("/")
     public String raiz() {
-        return "redirect:/login";
+        return "redirect:/index";
     }
 }

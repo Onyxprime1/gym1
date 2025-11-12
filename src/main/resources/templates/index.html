@@ -1,47 +1,432 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DEBUG Gym</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>DEBUG Gym — Plataforma</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
     <style>
-        body { background-color: #0d0d0f; color: #fff; }
-        .card-dark { background-color: #1a1a1e; border: none; border-radius: 1rem; }
-        .btn-gold { background-color: #ffcc00; color: #000; font-weight: 600; border-radius: 0.5rem; }
-        .btn-gold:hover { background-color: #ffdb4d; }
-        .title { color: #ffcc00; font-weight: bold; }
+        :root{
+            --bg:#0a0a0e; --ink:#f2f2f2; --muted:#b7b7c2; --accent:#ffc107; --card:#111118; --line:#1b1b25;
+        }
+        html,body{background:var(--bg); color:var(--ink)}
+        .section{padding:4.5rem 1.5rem}
+        .title,.subtitle{color:var(--ink)}
+        .kicker{ color:var(--accent); font-weight:800; letter-spacing:.08em; text-transform:uppercase; font-size:.8rem }
+        .title-center{ text-align:center; max-width:720px; margin:0 auto 1rem }
+        .title-underline{ border-bottom:3px solid var(--accent); display:inline-block; padding-bottom:6px }
+        .muted{ color:var(--muted) }
+
+        /* Navbar */
+        .navbar.is-darkglass{background:rgba(10,10,14,.6); backdrop-filter:blur(10px); border-bottom:1px solid rgba(255,255,255,.06)}
+        .navbar .navbar-item{ color:var(--accent); font-weight:700; letter-spacing:.3px }
+        .brand-title{ color:var(--accent); font-weight:900; font-size:1.6rem; letter-spacing:.8px }
+        .btn-pill{ border:2px solid var(--accent); color:var(--accent); border-radius:999px; padding:.6rem 1.1rem; font-weight:800; background:transparent }
+        .btn-pill:hover{ background:var(--accent); color:#151515 }
+
+        /* HERO */
+        .hero-landing{
+            min-height: calc(100vh - 56px);
+            background-image:url('https://png.pngtree.com/thumb_back/fh260/background/20240329/pngtree-rows-of-dumbbells-in-the-gym-image_15662386.jpg');
+            background-size:cover; background-position:center; position:relative; transition:background-image .8s ease-in-out;
+        }
+        .hero-landing::after{content:""; position:absolute; inset:0; background:linear-gradient(180deg, rgba(0,0,0,.5), rgba(0,0,0,.7))}
+        .hero-inner{ position:relative; z-index:1; min-height: calc(100vh - 56px); display:flex; align-items:flex-end; padding: 3rem 1rem }
+        .headline-giant{
+            color:var(--accent); font-weight:900; line-height:.9; text-transform:uppercase; letter-spacing:.6px;
+            font-size: clamp(2.4rem, 9vw, 6rem); text-shadow:0 2px 0 rgba(0,0,0,.55); margin-bottom:.6rem;
+        }
+        .lead{ color:var(--muted); font-size:1.05rem }
+
+        /* Cards base */
+        .cardx{
+            background:var(--card); border:1px solid var(--line); border-radius:16px; overflow:hidden;
+            box-shadow:0 12px 28px rgba(0,0,0,.33);
+        }
+        .media-img{ width:100%; height:260px; object-fit:cover; display:block; }
+        .overlay-grad{ position:relative }
+        .overlay-grad::after{ content:""; position:absolute; inset:0; background:linear-gradient(180deg, rgba(0,0,0,0), rgba(0,0,0,.65) 58%) }
+
+        /* Planes */
+        .plan-card{ position:relative; height: 470px; display:flex; flex-direction:column }
+        .plan-head{
+            position:absolute; left:18px; right:18px; bottom:18px; z-index:2;
+            display:flex; justify-content:space-between; align-items:center; color:#fff;
+            font-weight:900; text-transform:uppercase; letter-spacing:.4px; font-size:1.2rem;
+        }
+        .chip{ background:rgba(255,193,7,.96); color:#111; padding:.28rem .65rem; border-radius:999px; font-weight:800; font-size:.8rem }
+        .plan-body{ padding:1.2rem 1.3rem 1.4rem; display:flex; flex-direction:column; gap:.6rem }
+        .tagline{ color:var(--muted) }
+
+        /* Feature chips (sin listas) */
+        .features{ display:flex; flex-wrap:wrap; gap:.5rem; margin-top:.4rem }
+        .feat{ border:1px solid var(--line); color:var(--ink); border-radius:999px; padding:.35rem .7rem; font-size:.85rem; background:rgba(255,255,255,.02) }
+        .plan-card:hover{ transform: translateY(-4px); transition:.25s ease; box-shadow:0 16px 34px rgba(0,0,0,.44) }
+
+        /* Mosaico */
+        .mosaic .tile{ position:relative; border-radius:16px; overflow:hidden; height:220px; background:#000; box-shadow:0 10px 22px rgba(0,0,0,.25) }
+        .mosaic img{ width:100%; height:100%; object-fit:cover; filter:brightness(.86) }
+        .mosaic .caption{ position:absolute; left:14px; bottom:12px; color:#fff; font-weight:800; text-transform:uppercase; letter-spacing:.4px; text-shadow:0 1px 0 rgba(0,0,0,.6) }
+
+        /* Profesionales */
+        .pro-card .media-img{ height:220px }
+        .pro-card .plan-head{ font-size:1.05rem }
+
+        /* Form visita */
+        .visit-card{ background:#0f0f15; border:1px solid rgba(255,255,255,.08); border-radius:16px }
+        .visit-card .input{ background:#0c0c12; color:var(--ink); border-color:#1e1e2a; border-radius:12px }
+        .btn-outline-accent{ background:transparent; border:2px solid var(--accent); color:var(--accent); border-radius:999px; font-weight:800 }
+        .btn-outline-accent:hover{ background:var(--accent); color:#151515 }
+
+        .section-dark{ background:#0d0d13 }
+        .divider{ height:1px; background:var(--line); margin:1.2rem 0 }
     </style>
 </head>
 <body>
-<nav class="navbar navbar-dark bg-dark px-4">
-    <span class="navbar-brand mb-0 h1 title">DEBUG Gym</span>
-    <div>
-        <span th:text="${nombre}" class="me-3"></span>
-        <a href="/login" class="btn btn-outline-warning btn-sm">Salir</a>
+
+<!-- NAVBAR -->
+<nav class="navbar is-darkglass" role="navigation" aria-label="main navigation">
+    <div class="container">
+        <div class="navbar-brand">
+            <a class="navbar-item brand-title" href="https://sandrayool22.github.io/PROYECTO/">DEBUG Gym</a>
+            <a role="button" class="navbar-burger" aria-label="menu" aria-expanded="false" data-target="navMain">
+                <span aria-hidden="true"></span><span aria-hidden="true"></span><span aria-hidden="true"></span>
+            </a>
+        </div>
+        <div id="navMain" class="navbar-menu">
+            <div class="navbar-start">
+                <a class="navbar-item" href="#planes">Planes</a>
+                <a class="navbar-item" href="#beneficios">Beneficios</a>
+                <a class="navbar-item" href="#equipo">Profesionales</a>
+                <a class="navbar-item" href="#instalaciones">Instalaciones</a>
+            </div>
+            <div class="navbar-end">
+                <div class="navbar-item">
+                    <a class="button btn-pill" href="https://sandrayool22.github.io/PROYECTO/signup">Registrarse</a>
+                    <a class="button btn-pill ml-3" href="https://sandrayool22.github.io/PROYECTO/login">Iniciar sesión</a>
+                </div>
+            </div>
+        </div>
     </div>
 </nav>
 
-<div class="container mt-5">
-    <h4 class="text-uppercase text-warning">Bienvenido</h4>
-    <h2 th:text="'Hola, ' + ${nombre} + '.'">Hola, Atleta.</h2>
-    <p>Aquí ves tu estado de membresía, accesos rápidos y próximos pasos.</p>
-
-    <div class="card card-dark p-4 mt-4">
-        <div class="d-flex justify-content-between">
-            <div>
-                <p class="text-secondary mb-1">Plan actual</p>
-                <h5>El Gran Machote (Premium)</h5>
-            </div>
-            <div class="text-end">
-                <p class="text-secondary mb-1">Próximo pago</p>
-                <h5>11 dic 2025</h5>
-            </div>
-        </div>
-        <div class="text-end mt-3">
-            <a href="#" class="btn btn-gold">Ir a Pagos</a>
+<!-- HERO -->
+<section class="hero hero-landing">
+    <div class="container hero-inner">
+        <div>
+            <span class="kicker">Bienvenido a DEBUG Gym</span>
+            <h1 class="headline-giant">Entrena en el horario<br>que más te convenga.</h1>
+            <p class="lead">Resultados reales, equipo profesional y un espacio pensado para ti.</p>
         </div>
     </div>
-</div>
+</section>
+
+<!-- PLANES -->
+<section id="planes" class="section">
+    <div class="container">
+        <div class="title-center">
+            <span class="kicker">Membresías</span><br>
+            <h2 class="title is-3 title-underline">Nuestros planes</h2>
+            <p class="muted">Elige el plan que va contigo. Personalización disponible con membresía activa al día.</p>
+        </div>
+
+        <div class="columns is-variable is-7">
+            <!-- Básico -->
+            <div class="column is-12-tablet is-6-desktop">
+                <div class="cardx plan-card">
+                    <div class="overlay-grad">
+                        <img class="media-img" src="https://images.pexels.com/photos/3837781/pexels-photo-3837781.jpeg?auto=compress&cs=tinysrgb&w=1200" alt="Básico">
+                    </div>
+                    <div class="plan-head">
+                        <span>Básico</span>
+                        <span class="chip">Acceso esencial</span>
+                    </div>
+                    <div class="plan-body">
+                        <p class="tagline">Para empezar con lo necesario y avanzar a tu ritmo.</p>
+                        <div class="features">
+                            <span class="feat">Rutinas estándar</span>
+                            <span class="feat">Menús estándar</span>
+                            <span class="feat">Crear rutinas locales</span>
+                            <span class="feat">Soporte esencial</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- El Gran Machote (Premium) -->
+            <div class="column is-12-tablet is-6-desktop">
+                <div class="cardx plan-card">
+                    <div class="overlay-grad">
+                        <img class="media-img" src="https://images.pexels.com/photos/416809/pexels-photo-416809.jpeg?auto=compress&cs=tinysrgb&w=1200" alt="El Gran Machote">
+                    </div>
+                    <div class="plan-head">
+                        <span>El Gran Machote</span>
+                        <span class="chip">Premium</span>
+                    </div>
+                    <div class="plan-body">
+                        <p class="tagline">Máxima personalización con acompañamiento profesional.</p>
+                        <div class="features">
+                            <span class="feat">Rutinas personalizadas</span>
+                            <span class="feat">Dietas personalizadas</span>
+                            <span class="feat">Seguimiento & reportes</span>
+                            <span class="feat">Acceso con pago al día</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <p class="muted" style="margin-top:1rem">* El acceso a rutinas/dietas personalizadas requiere membresía premium activa.</p>
+    </div>
+</section>
+
+<!-- BENEFICIOS -->
+<section id="beneficios" class="section section-dark">
+    <div class="container">
+        <div class="title-center">
+            <span class="kicker">Por qué elegirnos</span><br>
+            <h2 class="title is-3 title-underline">Beneficios</h2>
+        </div>
+        <div class="columns mosaic is-variable is-5">
+            <div class="column">
+                <div class="tile">
+                    <img src="https://images.pexels.com/photos/841130/pexels-photo-841130.jpeg?auto=compress&cs=tinysrgb&w=1200" alt="Programas efectivos">
+                    <span class="caption">Programas efectivos</span>
+                </div>
+            </div>
+            <div class="column">
+                <div class="tile">
+                    <img src="https://images.pexels.com/photos/5327483/pexels-photo-5327483.jpeg?auto=compress&cs=tinysrgb&w=1200" alt="Profesionales certificados">
+                    <span class="caption">Profesionales certificados</span>
+                </div>
+            </div>
+            <div class="column">
+                <div class="tile">
+                    <img src="https://images.pexels.com/photos/5935743/pexels-photo-5935743.jpeg?auto=compress&cs=tinysrgb&w=1200" alt="Pagos simples y claros">
+                    <span class="caption">Pagos simples y claros</span>
+                </div>
+            </div>
+            <div class="column">
+                <div class="tile">
+                    <img src="https://images.pexels.com/photos/3763875/pexels-photo-3763875.jpeg?auto=compress&cs=tinysrgb&w=1200" alt="Web y móvil">
+                    <span class="caption">Web y móvil</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- PROFESIONALES -->
+<section id="equipo" class="section">
+    <div class="container">
+        <div class="has-text-centered mb-5">
+            <span class="kicker">Nuestro equipo</span><br>
+            <h2 class="title is-3 title-underline">Profesionales</h2>
+        </div>
+
+        <div class="columns is-variable is-6 is-multiline">
+            <div class="column is-12-mobile is-6-tablet is-3-desktop">
+                <div class="cardx pro-card">
+                    <div class="overlay-grad">
+                        <img class="media-img" src="https://images.pexels.com/photos/4753893/pexels-photo-4753893.jpeg?auto=compress&cs=tinysrgb&w=1200" alt="Entrenador">
+                    </div>
+                    <div class="plan-head"><span>Entrenador</span><span class="chip">Técnica & Progresión</span></div>
+                </div>
+            </div>
+
+            <div class="column is-12-mobile is-6-tablet is-3-desktop">
+                <div class="cardx pro-card">
+                    <div class="overlay-grad">
+                        <img class="media-img" src="https://images.pexels.com/photos/3184192/pexels-photo-3184192.jpeg?auto=compress&cs=tinysrgb&w=1200" alt="Nutriólogo">
+                    </div>
+                    <div class="plan-head"><span>Nutriólogo</span><span class="chip">Plan alimentario</span></div>
+                </div>
+            </div>
+
+            <div class="column is-12-mobile is-6-tablet is-3-desktop">
+                <div class="cardx pro-card">
+                    <div class="overlay-grad">
+                        <img class="media-img" src="https://images.pexels.com/photos/4506109/pexels-photo-4506109.jpeg?auto=compress&cs=tinysrgb&w=1200" alt="Fisioterapeuta">
+                    </div>
+                    <div class="plan-head"><span>Fisioterapeuta</span><span class="chip">Prevención</span></div>
+                </div>
+            </div>
+
+            <div class="column is-12-mobile is-6-tablet is-3-desktop">
+                <div class="cardx pro-card">
+                    <div class="overlay-grad">
+                        <img class="media-img" src="https://images.pexels.com/photos/8867431/pexels-photo-8867431.jpeg?auto=compress&cs=tinysrgb&w=1200" alt="Coordinación">
+                    </div>
+                    <div class="plan-head"><span>Coordinación</span><span class="chip">Membresías</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<style>
+    .pro-card {
+        position: relative;
+        overflow: hidden;
+        border-radius: 16px;
+        box-shadow: 0 12px 28px rgba(0, 0, 0, 0.45);
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    .pro-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 18px 40px rgba(0, 0, 0, 0.6);
+    }
+    .pro-card .overlay-grad {
+        position: relative;
+    }
+    .pro-card .overlay-grad::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(180deg, rgba(0, 0, 0, 0) 35%, rgba(0, 0, 0, 0.8) 90%);
+        z-index: 1;
+    }
+    .pro-card img.media-img {
+        width: 100%;
+        height: 260px;
+        object-fit: cover;
+        filter: brightness(0.9) contrast(1.05);
+    }
+    .pro-card .plan-head {
+        position: absolute;
+        left: 12px;
+        right: 12px;
+        bottom: 14px;
+        z-index: 2;
+        background: rgba(0, 0, 0, 0.55);
+        backdrop-filter: blur(6px);
+        color: #fff;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-radius: 12px;
+        padding: 0.6rem 0.8rem;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
+    }
+    @media (max-width: 768px) {
+        .pro-card img.media-img { height: 200px; }
+        .pro-card .plan-head { font-size: 0.9rem; }
+    }
+</style>
+
+
+<!-- INSTALACIONES -->
+<section id="instalaciones" class="section section-dark">
+    <div class="container">
+        <div class="title-center">
+            <span class="kicker">Tu espacio</span><br>
+            <h2 class="title is-3 title-underline">Instalaciones</h2>
+        </div>
+        <div class="columns mosaic is-variable is-5">
+            <div class="column">
+                <div class="tile">
+                    <img src="https://png.pngtree.com/thumb_back/fh260/background/20240329/pngtree-rows-of-dumbbells-in-the-gym-image_15662386.jpg" alt="Área de fuerza">
+                    <span class="caption">Área de fuerza</span>
+                </div>
+            </div>
+            <div class="column">
+                <div class="tile">
+                    <img src="https://png.pngtree.com/thumb_back/fh260/background/20241224/pngtree-a-fully-equipped-gym-with-dumbbells-weight-machines-and-cardio-equipment-image_16843660.jpg" alt="Máquinas & Cardio">
+                    <span class="caption">Máquinas & Cardio</span>
+                </div>
+            </div>
+            <div class="column">
+                <div class="tile">
+                    <img src="https://t3.ftcdn.net/jpg/08/27/87/60/360_F_827876077_k0EWo3jSiWZPR8fRgsSbZFT9SkrozNuj.jpg" alt="Ambiente moderno">
+                    <span class="caption">Ambiente moderno</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- PROGRAMA UNA VISITA -->
+<section id="visita" class="section">
+    <div class="container">
+        <div class="title-center">
+            <span class="kicker">Conócenos</span><br>
+            <h2 class="title is-3 title-underline">Programa una visita</h2>
+        </div>
+        <div class="columns is-variable is-7">
+            <div class="column is-12-tablet is-6-desktop">
+                <p class="is-size-5 muted" style="max-width:46ch">
+                    Haz un recorrido gratuito de 30 minutos por cualquiera de nuestras sedes.
+                    Prueba equipos, observa clases y despeja tus dudas.
+                </p>
+            </div>
+            <div class="column is-12-tablet is-6-desktop">
+                <form class="box visit-card">
+                    <div class="columns">
+                        <div class="column">
+                            <div class="field"><label class="label">Nombre</label><div class="control"><input class="input" name="nombre" required></div></div>
+                        </div>
+                        <div class="column">
+                            <div class="field"><label class="label">Apellido</label><div class="control"><input class="input" name="apellido"></div></div>
+                        </div>
+                    </div>
+                    <div class="field"><label class="label">Correo electrónico</label><div class="control"><input class="input" type="email" name="email" required></div></div>
+                    <div class="field"><label class="label">Fecha</label><div class="control"><input class="input" type="date" name="fecha" required></div></div>
+                    <div class="field mt-5"><button type="submit" class="button btn-outline-accent">ENVIAR</button></div>
+                </form>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- CTA FINAL -->
+<section class="section section-dark">
+    <div class="container">
+        <div class="box" style="background:#0f0f15; border:1px solid rgba(255,255,255,.08); border-radius:16px">
+            <div class="has-text-centered">
+                <h3 class="title is-4" style="font-weight:900">Tu mejor versión comienza hoy</h3>
+                <p class="muted">Únete y recibe tu plan inicial en minutos.</p>
+                <div class="buttons is-centered mt-4">
+                    <a class="button is-warning" href="https://sandrayool22.github.io/PROYECTO/signup">Registrarme</a>
+                    <a class="button btn-outline-accent" href="#visita">Agendar visita</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- FOOTER -->
+<footer class="footer" style="background:#0b0b12; border-top:1px solid rgba(255,255,255,.06)">
+    <div class="content has-text-centered">
+        <p class="muted"><strong style="color:var(--ink)">Proyecto Académico — Plataforma de Gimnasio</strong> · 2025</p>
+    </div>
+</footer>
+
+<!-- SCRIPT -->
+<script>
+    // Navbar burger
+    document.addEventListener('DOMContentLoaded', () => {
+        const burgers = Array.from(document.querySelectorAll('.navbar-burger'));
+        burgers.forEach(b => b.addEventListener('click', () => {
+            const t = document.getElementById(b.dataset.target);
+            b.classList.toggle('is-active'); if (t) t.classList.toggle('is-active');
+        }));
+    });
+
+    // Rotación de fondo del HERO (3 imágenes)
+    const imgs = [
+        'https://png.pngtree.com/thumb_back/fh260/background/20240329/pngtree-rows-of-dumbbells-in-the-gym-image_15662386.jpg',
+        'https://png.pngtree.com/thumb_back/fh260/background/20241224/pngtree-a-fully-equipped-gym-with-dumbbells-weight-machines-and-cardio-equipment-image_16843660.jpg',
+        'https://t3.ftcdn.net/jpg/08/27/87/60/360_F_827876077_k0EWo3jSiWZPR8fRgsSbZFT9SkrozNuj.jpg'
+    ];
+    let i = 0;
+    const hero = document.querySelector('.hero-landing');
+    setInterval(() => {
+        i = (i + 1) % imgs.length;
+        hero.style.backgroundImage = `url(${imgs[i]})`;
+    }, 5000);
+</script>
 </body>
 </html>
