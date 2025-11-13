@@ -25,30 +25,25 @@ public class LoginController {
 
     // POST: procesar login
     @PostMapping("/login")
-    public String procesarLogin(@ModelAttribute Usuario usuario,
-                                Model model,
-                                HttpSession session) {
-        Usuario u = em.createQuery(
-                        "SELECT u FROM Usuario u WHERE u.correo = :correo",
-                        Usuario.class)
+    public String procesarLogin(@ModelAttribute Usuario usuario, Model model, HttpSession session) {
+        Usuario u = em.createQuery("SELECT u FROM Usuario u WHERE u.correo = :correo", Usuario.class)
                 .setParameter("correo", usuario.getCorreo())
                 .getResultStream()
                 .findFirst()
                 .orElse(null);
 
         if (u != null && u.getContrasena().equals(usuario.getContrasena())) {
-            // Guardas datos en sesión
+            // Guardamos datos en sesión
             session.setAttribute("uid", u.getId());
             session.setAttribute("unombre", u.getNombre());
-            session.setAttribute("rol", u.getRol() != null ? u.getRol().getNombre() : "Desconocido");
 
-            // Ir al panel /inicio
             return "redirect:/inicio";
         }
 
         model.addAttribute("error", "Correo o contraseña incorrectos");
         return "login";
     }
+
 
     // GET: mostrar formulario de registro
     @GetMapping("/registro")

@@ -1,4 +1,3 @@
-// InicioController.java
 package com.example.gym1.Controller;
 
 import jakarta.persistence.EntityManager;
@@ -20,21 +19,31 @@ public class InicioController {
 
     @GetMapping("/inicio")
     public String inicio(HttpSession session, Model model) {
+        // 1) Verificar usuario en sesión
         Integer uid = (Integer) session.getAttribute("uid");
-        if (uid == null) return "redirect:/login";
+        String nombreUsuario = Optional.ofNullable((String) session.getAttribute("unombre"))
+                .orElse("Atleta");
 
-        // 1) Cliente por usuario
-        Object[] cli = (Object[]) em.createNativeQuery(
-                        "SELECT c.id_cliente, c.nombre " +
+        if (uid == null) {
+            return "redirect:/login";
+        }
+
+        // Siempre mandamos el nombre del USUARIO
+        model.addAttribute("nombre", nombreUsuario);
+
+        // 2) Buscar si este usuario tiene un CLIENTE asociado
+        //    Solo necesitamos el id_cliente
+        Number idClienteNum = (Number) em.createNativeQuery(
+                        "SELECT c.id_cliente " +
                                 "FROM clientes c WHERE c.id_usuario = :uid")
                 .setParameter("uid", uid)
-                .getResultStream().findFirst().orElse(null);
+                .getResultStream()
+                .findFirst()
+                .orElse(null);
 
-        if (cli == null) {
-            // Si el usuario aún no está vinculado a 'clientes', tratamos el nombre de sesión
-            model.addAttribute("nombre", Optional.ofNullable((String)session.getAttribute("unombre")).orElse("Atleta"));
-            // Sin cliente: plan básico sin datos de pago
-            model.addAttribute("planNivel", "Básico");
+        // Si NO es cliente aún → sin membresía, sin rutinas, sin dietas
+        if (idClienteNum == null) {
+            model.addAttribute("planNivel", "Sin plan");
             model.addAttribute("vigente", false);
             model.addAttribute("proxPago", "-");
             model.addAttribute("estado", "Sin membresía");
@@ -43,10 +52,9 @@ public class InicioController {
             return "inicio";
         }
 
-        Integer idCliente = ((Number) cli[0]).intValue();
-        String nombre = (String) cli[1];
+        Integer idCliente = idClienteNum.intValue();
 
-        // 2) Última membresía por fecha_fin
+        // 3) Última membresía del cliente
         Object[] mem = (Object[]) em.createNativeQuery(
                         "SELECT m.tipo, cm.fecha_inicio, cm.fecha_fin, m.precio " +
                                 "FROM cliente_membresia cm " +
@@ -54,7 +62,9 @@ public class InicioController {
                                 "WHERE cm.id_cliente = :cid " +
                                 "ORDER BY cm.fecha_fin DESC LIMIT 1")
                 .setParameter("cid", idCliente)
-                .getResultStream().findFirst().orElse(null);
+                .getResultStream()
+                .findFirst()
+                .orElse(null);
 
         String proxPago = "-";
         String estado = "Sin membresía";
@@ -63,26 +73,29 @@ public class InicioController {
         if (mem != null) {
             Date fin = (Date) mem[2];
             if (fin != null) {
-                vigente = !fin.toLocalDate().isBefore(LocalDate.now());
-                proxPago = fin.toLocalDate().toString(); // formateo simple (puedes usar thymeleaf para formatear)
+                LocalDate fechaFin = fin.toLocalDate();
+                vigente = !fechaFin.isBefore(LocalDate.now());
+                proxPago = fechaFin.toString(); // luego lo puedes formatear más bonito
                 estado = vigente ? "Activa" : "Vencida";
             }
         }
 
-        // 3) ¿Tiene asignaciones personalizadas (rutinas/dietas)?
+        // 4) Contar rutinas y dietas asignadas al cliente
         Number rutinas = (Number) em.createNativeQuery(
                         "SELECT COUNT(*) FROM rutinas WHERE id_cliente = :cid")
-                .setParameter("cid", idCliente).getSingleResult();
+                .setParameter("cid", idCliente)
+                .getSingleResult();
 
         Number dietas = (Number) em.createNativeQuery(
                         "SELECT COUNT(*) FROM dietas WHERE id_cliente = :cid")
-                .setParameter("cid", idCliente).getSingleResult();
+                .setParameter("cid", idCliente)
+                .getSingleResult();
 
         boolean premium = (rutinas.intValue() + dietas.intValue()) > 0;
         String planNivel = premium ? "El Gran Machote (Premium)" : "Básico";
 
-        // 4) Modelo para la vista
-        model.addAttribute("nombre", nombre);
+
+        // 5) Poner todo en el modelo para la vista
         model.addAttribute("planNivel", planNivel);
         model.addAttribute("vigente", vigente);
         model.addAttribute("proxPago", proxPago);

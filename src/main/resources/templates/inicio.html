@@ -96,7 +96,42 @@
             </div>
         </div>
 
+        <style>
+            .disabled-btn {
+                opacity: 0.35 !important;
+                cursor: not-allowed !important;
+                pointer-events: none !important;
+            }
+            .tooltip {
+                position: relative;
+                display: inline-block;
+            }
+            .tooltip .tooltiptext {
+                visibility: hidden;
+                width: 180px;
+                background-color: #000000c0;
+                color: #fff;
+                text-align: center;
+                border-radius: 6px;
+                padding: 6px;
+                position: absolute;
+                z-index: 1;
+                bottom: 120%;
+                left: 50%;
+                margin-left: -90px;
+                opacity: 0;
+                transition: opacity 0.3s;
+                font-size: 0.75rem;
+            }
+            .tooltip:hover .tooltiptext {
+                visibility: visible;
+                opacity: 1;
+            }
+        </style>
+
         <div class="grid">
+
+            <!-- RUTINAS -->
             <div class="cardx hover-up tile-app" style="grid-column:span 6;">
                 <div class="is-flex is-align-items-center is-justify-content-space-between">
                     <div class="is-flex is-align-items-center" style="gap:.8rem">
@@ -104,14 +139,29 @@
                         <div>
                             <h4 class="title is-5">Rutinas</h4>
                             <p class="muted small"
-                               th:text="${planNivel.contains('Premium')} ? 'Rutinas personalizadas asignadas por tu instructor.' : 'Acceso a rutinas estándar y creador local.'">
+                               th:text="${planNivel.contains('Premium')} ?
+                       'Rutinas personalizadas asignadas por tu instructor.' :
+                       'Acceso a rutinas estándar y creador local.'">
                                 —
                             </p>
                         </div>
                     </div>
-                    <a class="button btn-ghost" href="/rutinas">Abrir</a>
+
+                    <div class="tooltip">
+                        <a class="button btn-ghost"
+                           th:href="${vigente} ? '/rutinas' : null"
+                           th:classappend="${vigente} ? '' : ' disabled-btn'"
+                        >Abrir</a>
+
+                        <span class="tooltiptext"
+                              th:if="${!vigente}">
+                    Necesitas una membresía activa para acceder.
+                </span>
+                    </div>
                 </div>
+
                 <hr>
+
                 <div class="is-flex is-flex-wrap-wrap" style="gap:.5rem">
                     <span class="badge ok" th:if="${planNivel.contains('Premium')}">Personalizadas</span>
                     <span class="badge" th:if="${planNivel.contains('Premium')}">Progresión semanal</span>
@@ -121,6 +171,7 @@
                 </div>
             </div>
 
+            <!-- DIETAS -->
             <div class="cardx hover-up tile-app" style="grid-column:span 6;">
                 <div class="is-flex is-align-items-center is-justify-content-space-between">
                     <div class="is-flex is-align-items-center" style="gap:.8rem">
@@ -128,14 +179,29 @@
                         <div>
                             <h4 class="title is-5">Nutrición</h4>
                             <p class="muted small"
-                               th:text="${planNivel.contains('Premium')} ? 'Plan de alimentación personalizado por nutriólogo.' : 'Menús estándar sugeridos.'">
+                               th:text="${planNivel.contains('Premium')} ?
+                       'Plan de alimentación personalizado por nutriólogo.' :
+                       'Menús estándar sugeridos.'">
                                 —
                             </p>
                         </div>
                     </div>
-                    <a class="button btn-ghost" href="/dietas">Abrir</a>
+
+                    <div class="tooltip">
+                        <a class="button btn-ghost"
+                           th:href="${vigente} ? '/dietas' : null"
+                           th:classappend="${vigente} ? '' : ' disabled-btn'"
+                        >Abrir</a>
+
+                        <span class="tooltiptext"
+                              th:if="${!vigente}">
+                    Necesitas una membresía activa para acceder.
+                </span>
+                    </div>
                 </div>
+
                 <hr>
+
                 <div class="is-flex is-flex-wrap-wrap" style="gap:.5rem">
                     <span class="badge ok" th:if="${planNivel.contains('Premium')}">Personalizadas</span>
                     <span class="badge" th:if="${planNivel.contains('Premium')}">Preferencias & presupuesto</span>
@@ -144,32 +210,48 @@
                 </div>
             </div>
 
+            <!-- PROGRESO -->
             <div class="cardx hover-up tile-app" style="grid-column:span 6;">
                 <div class="is-flex is-align-items-center is-justify-content-space-between">
                     <div class="is-flex is-align-items-center" style="gap:.8rem">
                         <div class="icon-round">📈</div>
                         <div>
                             <h4 class="title is-5">Progreso</h4>
-                            <p class="muted small">Registra peso, medidas y % de grasa. Visualiza tu evolución.</p>
+                            <p class="muted small">Registra peso, medidas y % de grasa.</p>
                         </div>
                     </div>
-                    <a class="button btn-ghost" href="/progreso">Abrir</a>
+
+                    <div class="tooltip">
+                        <a class="button btn-ghost"
+                           th:href="${vigente} ? '/progreso' : null"
+                           th:classappend="${vigente} ? '' : ' disabled-btn'"
+                        >Abrir</a>
+
+                        <span class="tooltiptext"
+                              th:if="${!vigente}">
+                    Necesitas una membresía activa para acceder.
+                </span>
+                    </div>
                 </div>
             </div>
 
+            <!-- PAGOS (SIEMPRE ACTIVO) -->
             <div class="cardx hover-up tile-app" style="grid-column:span 6;">
                 <div class="is-flex is-align-items-center is-justify-content-space-between">
                     <div class="is-flex is-align-items-center" style="gap:.8rem">
                         <div class="icon-round">💳</div>
                         <div>
                             <h4 class="title is-5">Pagos</h4>
-                            <p class="muted small">Consulta tu historial, estado actual y renueva tu plan.</p>
+                            <p class="muted small">Consulta tu historial, estado actual o renueva tu plan.</p>
                         </div>
                     </div>
+
                     <a class="button btn-ghost" href="/pagos">Abrir</a>
                 </div>
             </div>
+
         </div>
+
 
         <div id="notaPremium" class="notification is-warning is-light mt-5"
              th:classappend="${planNivel.contains('Premium')} ? ' is-hidden' : ''">
