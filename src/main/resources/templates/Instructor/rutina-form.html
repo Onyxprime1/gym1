@@ -1,8 +1,8 @@
-<!DOCTYPE html>
 <!--/*@thymesVar name="rutina" type="com.example.gym1.Poo.Rutina" */-->
 <!--/*@thymesVar name="ejercicios" type="java.util.List" */-->
-<!--/*@thymesVar name="clientes" type="java.util.List" */-->
+<!--/*@thymesVar name="musculos" type="java.util.List" */-->
 <!--/*@thymesVar name="detallesJson" type="java.lang.String" */-->
+<!DOCTYPE html>
 <html lang="es" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="utf-8"/>
@@ -20,6 +20,9 @@
         .detalle-row .small-input{width:90px;}
         .detalle-row .day-input{width:140px;}
         .selected-row{display:flex;gap:.5rem;align-items:center;padding:.25rem 0;border-bottom:1px solid rgba(255,255,255,.02)}
+        #exercises-list{max-height:260px; overflow:auto; padding:.5rem; border:1px solid rgba(255,255,255,.03); border-radius:8px; margin-bottom:.75rem}
+        .exercise-label{display:block;padding:.25rem 0}
+        .hidden{display:none}
     </style>
 </head>
 <body>
@@ -48,40 +51,31 @@
                     <div class="control"><textarea class="textarea" th:field="*{descripcion}" rows="3"></textarea></div>
                 </div>
 
-                <div class="field">
-                    <label class="label">Asignar a cliente</label>
-                    <div class="control">
-                        <div class="select">
-                            <select name="clienteId">
-                                <option value="">-- Sin asignar --</option>
-                                <option th:each="c : ${clientes}"
-                                        th:value="${c.id}"
-                                        th:text="${c.nombre}"
-                                        th:selected="${rutina != null and rutina.cliente != null and rutina.cliente.id == c.id}">
-                                    Cliente
-                                </option>
-                            </select>
-                        </div>
-                        <p class="muted">Selecciona el cliente al que asignar esta rutina.</p>
-                    </div>
-                </div>
+                <!-- NOTE: se quita selección/assignación de cliente aquí según lo pedido -->
 
                 <hr/>
 
-                <!-- Sección dinámica de ejercicios -->
-                <h3 class="title is-5">Ejercicios (marca para añadir y completa serie/reps/día)</h3>
-                <div class="muted" style="margin-bottom:.5rem">Marca los ejercicios que pertenecerán a la rutina y define serie, repeticiones y día.</div>
-
-                <div style="max-height:260px; overflow:auto; padding:.5rem; border:1px solid rgba(255,255,255,.03); border-radius:8px; margin-bottom:.75rem">
-                    <div th:each="e : ${ejercicios}">
-                        <label style="display:flex;align-items:center;gap:.5rem;margin-bottom:.25rem">
-                            <input type="checkbox"
-                                   class="exercise-checkbox"
-                                   th:attr="data-eid=${e.id},data-nombre=${e.nombre},data-musculo=${e.musculo}"
-                                   th:value="${e.id}" />
-                            <span th:text="${e.nombre + (e.musculo != null ? ' — ' + e.musculo : '')}">Ejercicio</span>
-                        </label>
+                <!-- FILTROS: búsqueda por nombre y filtro por músculo -->
+                <div style="display:flex;gap:.5rem;align-items:center;margin-bottom:.5rem">
+                    <input id="searchInput" type="search" placeholder="Buscar por nombre..." class="input" style="flex:1" />
+                    <div class="select" style="min-width:180px">
+                        <select id="muscleFilter">
+                            <option value="">Todos los músculos</option>
+                            <option th:each="m : ${musculos}" th:value="${m}" th:text="${m}">Músculo</option>
+                        </select>
                     </div>
+                    <button type="button" id="btnClearFilters" class="button is-light">Limpiar</button>
+                </div>
+
+                <div class="muted">Marca los ejercicios que pertenecerán a la rutina y define serie, repeticiones y día.</div>
+
+                <!-- Lista completa de ejercicios con checkbox (filtrable) -->
+                <div id="exercises-list">
+                    <label th:each="e : ${ejercicios}" class="exercise-label">
+                        <input type="checkbox" class="exercise-checkbox" th:attr="data-eid=${e.id},data-nombre=${e.nombre},data-musculo=${e.musculo}"
+                               th:value="${e.id}" />&nbsp;
+                        <span th:text="${e.nombre} + ' — ' + (e.musculo != null ? e.musculo : '')">Ejercicio — Músculo</span>
+                    </label>
                 </div>
 
                 <!-- Contenedor donde JS añadirá los inputs reales que se enviarán -->
@@ -90,7 +84,7 @@
                 <!-- Inyectamos JSON seguro para el JS (detallesJson viene del controlador) -->
                 <span id="existing-details-json" style="display:none" th:utext="${detallesJson}">[]</span>
 
-                <!-- Opcional: añadir por select -->
+                <!-- Añadir ejercicio mediante select (útil) -->
                 <div style="display:flex;gap:.5rem;align-items:center;margin-bottom:1rem">
                     <select id="all-exercises-select" style="min-width:280px">
                         <option value="">-- Seleccionar ejercicio --</option>
@@ -109,7 +103,120 @@
     </div>
 </section>
 
-<!-- Script para manejar el formulario dinámico -->
-<script src="/js/rutina-form.js"></script>
+<script>
+    // Gestiona selección dinámica de ejercicios: añade inputs ocultos en #selected-exercises
+    // También inicializa desde existing-details-json si viene (editar)
+    const selectedContainer = document.getElementById('selected-exercises');
+    const exercisesList = document.getElementById('exercises-list');
+    const searchInput = document.getElementById('searchInput');
+    const muscleFilter = document.getElementById('muscleFilter');
+    const btnClear = document.getElementById('btnClearFilters');
+    const allSelect = document.getElementById('all-exercises-select');
+
+    function createSelectedRow(id, nombre, musculo, serie = '', rep = '', dia = '') {
+        // si ya existe input hidden para ese id, no duplicar
+        if (selectedContainer.querySelector('input[name="ejercicioId"][value="' + id + '"]')) return;
+        const wrapper = document.createElement('div');
+        wrapper.className = 'detalle-row selected-row';
+        wrapper.dataset.eid = id;
+        wrapper.innerHTML = '' +
+            '<input type="hidden" name="ejercicioId" value="' + id + '"/>' +
+            '<div style="flex:1"><strong>' + escapeHtml(nombre) + '</strong><div class="muted" style="font-size:.85rem">' + escapeHtml(musculo || '') + '</div></div>' +
+            '<input class="small-input input" name="serie" placeholder="Series" value="' + (serie !== null ? serie : '') + '"/>' +
+            '<input class="small-input input" name="repeticiones" placeholder="Reps" value="' + (rep !== null ? rep : '') + '"/>' +
+            '<input class="day-input input" name="dia" placeholder="Día" value="' + (dia !== null ? dia : '') + '"/>' +
+            '<button type="button" class="button is-danger" style="margin-left:.35rem" onclick="removeSelected(' + id + ')">X</button>';
+        selectedContainer.appendChild(wrapper);
+    }
+
+    function removeSelected(id) {
+        const wrapper = selectedContainer.querySelector('.selected-row[data-eid="' + id + '"]');
+        if (wrapper) wrapper.remove();
+        // Uncheck checkbox if present
+        const chk = exercisesList.querySelector('.exercise-checkbox[value="' + id + '"]');
+        if (chk) chk.checked = false;
+    }
+
+    // escape básico
+    function escapeHtml(s) {
+        return (s || '').toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    // al marcar checkbox añadir fila
+    exercisesList.addEventListener('change', function (e) {
+        const cb = e.target;
+        if (!cb.classList.contains('exercise-checkbox')) return;
+        const id = cb.value;
+        const nombre = cb.dataset.nombre || cb.getAttribute('data-nombre') || '';
+        const musculo = cb.dataset.musculo || cb.getAttribute('data-musculo') || '';
+        if (cb.checked) {
+            createSelectedRow(id, nombre, musculo);
+        } else {
+            removeSelected(id);
+        }
+    });
+
+    // Añadir por select
+    document.getElementById('btn-add-exercise').addEventListener('click', function () {
+        const id = allSelect.value;
+        if (!id) return alert('Selecciona un ejercicio');
+        const opt = allSelect.options[allSelect.selectedIndex];
+        const text = opt.text;
+        const [namePart, musPart] = text.split(' — ');
+        createSelectedRow(id, namePart || text, musPart || '');
+        // marcar checkbox si visible
+        const cb = exercisesList.querySelector('.exercise-checkbox[value="' + id + '"]');
+        if (cb) cb.checked = true;
+    });
+
+    // Inicializar detalles existentes (editar)
+    (function initFromJson() {
+        try {
+            const raw = document.getElementById('existing-details-json').innerText || '[]';
+            const arr = JSON.parse(raw);
+            if (Array.isArray(arr)) {
+                arr.forEach(function (d) {
+                    if (d && d.id) createSelectedRow(d.id, d.nombre || '', d.musculo || '', d.serie || '', d.repeticiones || '', d.dia || '');
+                    // marcar checkbox si existe
+                    const cb = exercisesList.querySelector('.exercise-checkbox[value="' + d.id + '"]');
+                    if (cb) cb.checked = true;
+                });
+            }
+        } catch (ex) {
+            console.error('init error', ex);
+        }
+    })();
+
+    // Filtrado en tiempo real
+    function filterExercises() {
+        const q = (searchInput.value || '').trim().toLowerCase();
+        const muscle = (muscleFilter.value || '').trim().toLowerCase();
+
+        const labels = exercisesList.querySelectorAll('.exercise-label');
+        labels.forEach(function (lbl) {
+            const name = (lbl.querySelector('span')?.innerText || '').toLowerCase();
+            const mus = ((lbl.querySelector('.exercise-checkbox')?.dataset.musculo) || '').toLowerCase();
+            const matchName = q === '' || name.indexOf(q) !== -1;
+            const matchMus = muscle === '' || mus === muscle;
+            if (matchName && matchMus) {
+                lbl.classList.remove('hidden');
+            } else {
+                lbl.classList.add('hidden');
+            }
+        });
+    }
+
+    searchInput.addEventListener('input', filterExercises);
+    muscleFilter.addEventListener('change', filterExercises);
+    btnClear.addEventListener('click', function () {
+        searchInput.value = '';
+        muscleFilter.value = '';
+        filterExercises();
+    });
+
+    // Ejecutar filtro inicial
+    filterExercises();
+
+</script>
 </body>
 </html>

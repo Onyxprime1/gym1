@@ -15,10 +15,12 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
- * Controlador para gestión de rutinas (crear/editar/listar/eliminar).
- * Respeta los POJOs existentes y usa consultas nativas para la tabla rutina_detalle.
+ * Controlador para gestión de rutinas (crear/editar/listar/eliminar/asignar).
+ * Actualizado: el formulario de crear/editar no contiene selección de cliente;
+ * muestra todos los ejercicios y lista de músculos para filtrar.
  */
 @Controller
 @RequestMapping("/instructor/rutinas")
@@ -29,7 +31,7 @@ public class RutinaInstructorController {
 
     private final ObjectMapper mapper = new ObjectMapper();
 
-    // LISTAR rutinas del instructor
+    // LISTAR rutinas del instructor (sin cambios)
     @GetMapping
     public String listar(HttpSession session, Model model) {
         Integer uid = (Integer) session.getAttribute("uid");
@@ -45,7 +47,6 @@ public class RutinaInstructorController {
             return "instructor/rutinas";
         }
 
-        // Obtenemos rutinas vía JPQL (la entidad Rutina ya mapea la columna id_instructor)
         List<Rutina> rutinas = em.createQuery(
                         "SELECT r FROM Rutina r WHERE r.instructor.id = :iid ORDER BY r.id DESC", Rutina.class)
                 .setParameter("iid", instructor.getId())
@@ -55,9 +56,10 @@ public class RutinaInstructorController {
         return "instructor/rutinas";
     }
 
-    // FORM crear
+    // FORM crear: NO devolvemos lista de clientes, sí ejercicios y lista de músculos
     @GetMapping("/crear")
-    public String crearForm(HttpSession session, Model model) {
+    public String crearForm(HttpSession session, Model model,
+                            @RequestParam(value = "clienteId", required = false) Integer clienteId) {
         Integer uid = (Integer) session.getAttribute("uid");
         if (uid == null) return "redirect:/login";
 
@@ -70,33 +72,28 @@ public class RutinaInstructorController {
             return "instructor/rutina-form";
         }
 
+        // Todos los ejercicios
         List<Ejercicio> ejercicios = em.createQuery("SELECT e FROM Ejercicio e ORDER BY e.nombre", Ejercicio.class)
                 .getResultList();
 
-        // Intentamos obtener clientes relacionados mediante JOIN con rutinas (si existen)
-        List<Cliente> clientes;
-        try {
-            clientes = em.createNativeQuery(
-                            "SELECT DISTINCT c.* FROM clientes c JOIN rutinas r ON c.id_cliente = r.id_cliente WHERE r.id_instructor = ? ORDER BY c.nombre",
-                            Cliente.class)
-                    .setParameter(1, instructor.getId())
-                    .getResultList();
-
-            if (clientes == null || clientes.isEmpty()) {
-                clientes = em.createQuery("SELECT c FROM Cliente c ORDER BY c.nombre", Cliente.class).getResultList();
-            }
-        } catch (Exception ex) {
-            clientes = em.createQuery("SELECT c FROM Cliente c ORDER BY c.nombre", Cliente.class).getResultList();
-        }
+        // Lista de músculos distintos (para el filtro)
+        List<String> musculos = ejercicios.stream()
+                .map(Ejercicio::getMusculo)
+                .filter(Objects::nonNull)
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .distinct()
+                .sorted(String::compareToIgnoreCase)
+                .collect(Collectors.toList());
 
         model.addAttribute("ejercicios", ejercicios);
-        model.addAttribute("clientes", clientes);
+        model.addAttribute("musculos", musculos);
         model.addAttribute("rutina", new Rutina());
         model.addAttribute("detallesJson", "[]"); // JS espera JSON
         return "instructor/rutina-form";
     }
 
-    // FORM editar (carga la rutina y sus detalles desde rutina_detalle)
+    // FORM editar (mantiene comportamiento anterior, pero también provee músculos y ejercicios)
     @GetMapping("/editar/{id}")
     public String editarForm(@PathVariable Integer id, HttpSession session, Model model, RedirectAttributes ra) {
         Integer uid = (Integer) session.getAttribute("uid");
@@ -117,7 +114,7 @@ public class RutinaInstructorController {
             return "redirect:/instructor/rutinas";
         }
 
-        // Verificar propietario (protección básica)
+        // protección: solo el instructor dueño puede editar la rutina
         if (rutina.getInstructor() == null || !Objects.equals(rutina.getInstructor().getId(), instructor.getId())) {
             ra.addFlashAttribute("error", "No tienes permiso para editar esta rutina");
             return "redirect:/instructor/rutinas";
@@ -126,22 +123,16 @@ public class RutinaInstructorController {
         List<Ejercicio> ejercicios = em.createQuery("SELECT e FROM Ejercicio e ORDER BY e.nombre", Ejercicio.class)
                 .getResultList();
 
-        // Clientes (los que han recibido rutinas de este instructor; fallback a todos)
-        List<Cliente> clientes;
-        try {
-            clientes = em.createNativeQuery(
-                            "SELECT DISTINCT c.* FROM clientes c JOIN rutinas r ON c.id_cliente = r.id_cliente WHERE r.id_instructor = ? ORDER BY c.nombre",
-                            Cliente.class)
-                    .setParameter(1, instructor.getId())
-                    .getResultList();
-            if (clientes == null || clientes.isEmpty()) {
-                clientes = em.createQuery("SELECT c FROM Cliente c ORDER BY c.nombre", Cliente.class).getResultList();
-            }
-        } catch (Exception ex) {
-            clientes = em.createQuery("SELECT c FROM Cliente c ORDER BY c.nombre", Cliente.class).getResultList();
-        }
+        List<String> musculos = ejercicios.stream()
+                .map(Ejercicio::getMusculo)
+                .filter(Objects::nonNull)
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .distinct()
+                .sorted(String::compareToIgnoreCase)
+                .collect(Collectors.toList());
 
-        // Cargar detalles desde la tabla rutina_detalle (nombres reales en la BD)
+        // Cargar detalles desde la tabla rutina_detalle
         @SuppressWarnings("unchecked")
         List<Object[]> rows = em.createNativeQuery(
                         "SELECT id_ejercicio, dia_semana, series, repeticiones FROM rutina_detalle WHERE id_rutina = ? ORDER BY id_ejercicio")
@@ -177,13 +168,13 @@ public class RutinaInstructorController {
         }
 
         model.addAttribute("ejercicios", ejercicios);
-        model.addAttribute("clientes", clientes);
+        model.addAttribute("musculos", musculos);
         model.addAttribute("rutina", rutina);
         model.addAttribute("detallesJson", detallesJson);
         return "instructor/rutina-form";
     }
 
-    // GUARDAR rutina + detalles (crear o actualizar) usando SQL nativo para rutina_detalle
+    // GUARDAR rutina + detalles (mantiene cliente opcional; formulario ya no envía cliente)
     @PostMapping("/guardar")
     @Transactional
     public String guardar(@ModelAttribute Rutina rutina,
@@ -207,10 +198,9 @@ public class RutinaInstructorController {
             return "redirect:/instructor/rutinas";
         }
 
-        // Asignar instructor en la entidad Rutina (POJO existente)
         rutina.setInstructor(instructor);
 
-        // Asociar cliente de forma segura: obtener referencia (no persistir ni eliminar cliente)
+        // Si por alguna razón llega clienteId (ahora opcional), lo asociamos; normalmente no vendrá desde la UI
         if (clienteId != null) {
             try {
                 Cliente cRef = em.getReference(Cliente.class, clienteId);
@@ -223,21 +213,18 @@ public class RutinaInstructorController {
             rutina.setCliente(null);
         }
 
-        // Persistir o mergear rutina
         if (rutina.getId() == null) {
             em.persist(rutina);
-            em.flush(); // asegurar id
+            em.flush();
         } else {
             rutina = em.merge(rutina);
         }
         Integer rutinaId = rutina.getId();
 
-        // Eliminar detalles previos en la tabla rutina_detalle (SQL nativo)
         em.createNativeQuery("DELETE FROM rutina_detalle WHERE id_rutina = ?")
                 .setParameter(1, rutinaId)
                 .executeUpdate();
 
-        // Insertar nuevos detalles enviados
         if (ejercicioIds != null && !ejercicioIds.isEmpty()) {
             for (int i = 0; i < ejercicioIds.size(); i++) {
                 Integer eid = ejercicioIds.get(i);
@@ -260,7 +247,7 @@ public class RutinaInstructorController {
         return "redirect:/instructor/rutinas";
     }
 
-    // ELIMINAR rutina
+    // ELIMINAR rutina (sin cambios)
     @PostMapping("/eliminar/{id}")
     @Transactional
     public String eliminar(@PathVariable Integer id, HttpSession session, RedirectAttributes ra) {
@@ -282,7 +269,6 @@ public class RutinaInstructorController {
             return "redirect:/instructor/rutinas";
         }
 
-        // Borrar detalles (tabla rutina_detalle) y luego la rutina
         em.createNativeQuery("DELETE FROM rutina_detalle WHERE id_rutina = ?").setParameter(1, id).executeUpdate();
         em.remove(em.contains(r) ? r : em.merge(r));
         ra.addFlashAttribute("success", "Rutina eliminada");

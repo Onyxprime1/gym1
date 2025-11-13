@@ -3,6 +3,9 @@
 <!--/*@thymesVar name="rutinasCount" type="java.lang.Integer" */-->
 <!--/*@thymesVar name="recentEjercicios" type="java.util.List<com.example.gym1.Poo.Ejercicio>" */-->
 <!--/*@thymesVar name="recentRutinas" type="java.util.List<com.example.gym1.Poo.Rutina>" */-->
+<!--/*@thymesVar name="clientes" type="java.util.List<com.example.gym1.Poo.Cliente>" */-->
+<!--/*@thymesVar name="clientRutinasList" type="java.util.List<com.example.gym1.Controller.Instructor.InstructorInicioController.ClientRutinas>" */-->
+<!--/*@thymesVar name="plantillaRutinas" type="java.util.List<com.example.gym1.Poo.Rutina>" */-->
 <!DOCTYPE html>
 <html lang="es" xmlns:th="http://www.thymeleaf.org">
 <head>
@@ -16,12 +19,9 @@
         .cardx{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:1rem}
         .muted{color:var(--muted)}
         .btn-main{background:var(--accent);color:#111;padding:.45rem .8rem;border-radius:8px;border:none;font-weight:800}
-        .stats{display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:1rem}
-        .stat{background:#0f0f14;padding:1rem;border-radius:10px;min-width:180px}
-        a{color:var(--accent)}
-        table{width:100%;color:var(--ink)}
-        th,td{padding:.35rem .6rem}
-        thead{background:#0e0e13}
+        .client-card{background:#0f0f14;padding:1rem;border-radius:10px;margin-bottom:.75rem}
+        .rutina-row{display:flex;align-items:center;justify-content:space-between;gap:.5rem;padding:.35rem 0;border-bottom:1px solid rgba(255,255,255,.03)}
+        .small-btn{padding:.25rem .5rem;font-size:.8rem;border-radius:6px}
     </style>
 </head>
 <body>
@@ -42,61 +42,95 @@
                 </div>
                 <div>
                     <a href="/instructor/ejercicios/nuevo" class="btn-main">+ Nuevo ejercicio</a>
-                    <a href="/instructor/rutinas/crear" class="button is-light" style="margin-left:.5rem">+ Nueva rutina</a>
+                    <a th:href="@{/instructor/rutinas/crear}" class="button is-light" style="margin-left:.5rem">+ Nueva rutina</a>
                 </div>
             </div>
 
-            <div class="stats">
-                <div class="stat">
+            <div class="stats" style="margin-bottom:1rem">
+                <div class="stat" style="min-width:220px">
                     <div style="font-weight:800;font-size:0.9rem">Ejercicios</div>
                     <div style="font-size:1.6rem;font-weight:900" th:text="${ejerciciosCount}">0</div>
                     <div class="muted">Total de ejercicios</div>
-                    <div style="margin-top:.5rem"><a href="/instructor/ejercicios">Ver todos</a></div>
                 </div>
-                <div class="stat">
+                <div class="stat" style="min-width:220px">
                     <div style="font-weight:800;font-size:0.9rem">Rutinas</div>
                     <div style="font-size:1.6rem;font-weight:900" th:text="${rutinasCount}">0</div>
                     <div class="muted">Rutinas asignadas por ti</div>
-                    <div style="margin-top:.5rem"><a href="/instructor/rutinas">Ver rutinas</a></div>
                 </div>
             </div>
 
-            <div style="display:flex;gap:1rem;align-items:flex-start">
+            <!-- NEW: Card por clientes con sus rutinas -->
+            <h3 class="title is-5" style="margin-bottom:.5rem">Clientes y sus rutinas</h3>
+            <div>
+                <div th:each="cr,iterStat : ${clientRutinasList}" class="client-card">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem">
+                        <div>
+                            <strong th:text="${cr.cliente.nombre}">Nombre Cliente</strong>
+                            <!-- CORRECCIÓN: mostrar nombre (o cualquier propiedad que exista).
+                                 Evitamos acceder a cr.cliente.email que no existe en la entidad Cliente -->
+                            <div class="muted" th:text="${cr.cliente.nombre}"></div>
+                        </div>
+                        <div style="display:flex;gap:.5rem;align-items:center">
+                            <!-- Crear rutina directamente para este cliente (si quieres crear y auto-asignar) -->
+                            <a th:href="@{|/instructor/rutinas/crear?clienteId=${cr.cliente.id}|}" class="button is-small" title="Crear rutina y asignar al cliente">+ Crear</a>
+
+                            <!-- Form para asignar una plantilla existente al cliente -->
+                            <form th:id="'assignForm' + ${iterStat.index}" method="post" th:action="@{/}" style="display:flex;gap:.35rem;align-items:center;margin:0">
+                                <div class="select">
+                                    <select th:id="'plantillaSelect' + ${iterStat.index}" name="plantillaRutinaId">
+                                        <option value="">Asignar plantilla...</option>
+                                        <option th:each="p : ${plantillaRutinas}" th:value="${p.id}" th:text="${p.nombre}"></option>
+                                    </select>
+                                </div>
+                                <input type="hidden" name="clienteId" th:value="${cr.cliente.id}"/>
+                                <button type="button" class="button is-small is-info" th:onclick="'submitAssign(' + ${iterStat.index} + ')'" title="Asignar plantilla seleccionada">Asignar</button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <div th:if="${#lists.isEmpty(cr.rutinas)}" class="muted">No hay rutinas asignadas a este cliente.</div>
+
+                    <div th:each="r : ${cr.rutinas}">
+                        <div class="rutina-row">
+                            <div>
+                                <div style="font-weight:700" th:text="${r.nombre}">Nombre rutina</div>
+                                <div class="muted" th:text="${r.descripcion}">Descripción breve</div>
+                            </div>
+                            <div style="display:flex;gap:.35rem;align-items:center">
+                                <a th:href="@{|/instructor/rutinas/editar/${r.id}|}" class="button small-btn is-link">Editar</a>
+                                <form th:action="@{|/instructor/rutinas/eliminar/${r.id}|}" method="post" style="display:inline" onsubmit="return confirm('¿Eliminar rutina?');">
+                                    <button class="button small-btn is-danger" type="submit">Eliminar</button>
+                                </form>
+                                <a th:href="@{|/instructor/rutinas/asignar/${r.id}|}" class="button small-btn is-info" title="Asignar copia a otro cliente">Asignar copia</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sidebar: últimas rutinas y ejercicios (resumen) -->
+            <div style="display:flex;gap:1rem;margin-top:1rem">
                 <div style="flex:1">
-                    <h3 class="title is-5">Últimos ejercicios</h3>
-                    <div style="overflow:auto">
-                        <table>
-                            <thead><tr><th>Nombre</th><th>Músculo</th><th style="width:120px">Acciones</th></tr></thead>
-                            <tbody>
-                            <tr th:each="e : ${recentEjercicios}">
-                                <td th:text="${e.nombre}">Nombre</td>
-                                <td th:text="${e.musculo}">Músculo</td>
-                                <td>
-                                    <a class="button is-small is-link" th:href="@{|/instructor/ejercicios/editar/${e.id}|}">Editar</a>
-                                </td>
-                            </tr>
-                            <tr th:if="${#lists.isEmpty(recentEjercicios)}"><td colspan="3" class="muted">No hay ejercicios.</td></tr>
-                            </tbody>
-                        </table>
+                    <h4 class="title is-6">Últimos ejercicios</h4>
+                    <div>
+                        <ul>
+                            <li th:each="e : ${recentEjercicios}" class="muted" th:text="${e.nombre}">Ejercicio</li>
+                            <li th:if="${#lists.isEmpty(recentEjercicios)}" class="muted">No hay ejercicios recientes.</li>
+                        </ul>
                     </div>
                 </div>
 
-                <div style="width:420px">
-                    <h3 class="title is-5">Tus rutinas recientes</h3>
-                    <div style="overflow:auto">
-                        <table>
-                            <thead><tr><th>Nombre</th><th>Cliente</th><th style="width:120px">Acciones</th></tr></thead>
-                            <tbody>
-                            <tr th:each="r : ${recentRutinas}">
-                                <td th:text="${r.nombre}">Nombre</td>
-                                <td th:text="${r.cliente != null ? r.cliente.nombre : '—'}">Cliente</td>
-                                <td>
-                                    <a class="button is-small is-link" th:href="@{|/instructor/rutinas/editar/${r.id}|}">Editar</a>
-                                </td>
-                            </tr>
-                            <tr th:if="${#lists.isEmpty(recentRutinas)}"><td colspan="3" class="muted">No hay rutinas.</td></tr>
-                            </tbody>
-                        </table>
+                <div style="width:380px">
+                    <h4 class="title is-6">Tus rutinas recientes</h4>
+                    <div>
+                        <ul>
+                            <li th:each="r : ${recentRutinas}">
+                                <span th:text="${r.nombre}">Rutina</span>
+                                <a th:href="@{|/instructor/rutinas/editar/${r.id}|}" style="margin-left:.5rem">Editar</a>
+                                <a th:href="@{|/instructor/rutinas/asignar/${r.id}|}" style="margin-left:.5rem">Asignar</a>
+                            </li>
+                            <li th:if="${#lists.isEmpty(recentRutinas)}" class="muted">No hay rutinas recientes.</li>
+                        </ul>
                     </div>
                 </div>
             </div>
@@ -104,5 +138,25 @@
         </div>
     </div>
 </section>
+
+<script>
+    // Envía el form hacia /instructor/rutinas/asignar/{rutinaId} con clienteId incluido
+    function submitAssign(index) {
+        var select = document.getElementById('plantillaSelect' + index);
+        if (!select) return;
+        var rutinaId = select.value;
+        if (!rutinaId) {
+            alert('Selecciona una plantilla de rutina para asignar.');
+            return;
+        }
+        var form = document.getElementById('assignForm' + index);
+        var clienteIdInput = form.querySelector('input[name="clienteId"]');
+        var clienteId = clienteIdInput ? clienteIdInput.value : null;
+
+        form.action = '/instructor/rutinas/asignar/' + encodeURIComponent(rutinaId);
+        form.method = 'post';
+        form.submit();
+    }
+</script>
 </body>
 </html>

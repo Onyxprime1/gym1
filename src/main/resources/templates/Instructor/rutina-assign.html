@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8"/>
+    <title>Asignar rutina</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+</head>
+<body>
+<section class="section">
+    <div class="container">
+        <h1 class="title">Asignar rutina</h1>
+        <div class="box">
+            <p><strong th:text="${plantilla.nombre}">Nombre rutina</strong></p>
+            <p class="muted" th:text="${plantilla.descripcion}">Descripción</p>
+            <hr/>
+            <form th:action="@{|/instructor/rutinas/asignar/${plantilla.id}|}" method="post">
+                <div class="field">
+                    <label class="label">Selecciona cliente</label>
+                    <div class="control">
+                        <div class="select">
+                            <select name="clienteId" required>
+                                <option value="">-- Seleccionar cliente --</option>
+                                <option th:each="c : ${clientes}" th:value="${c.id}" th:text="${c.nombre}">Cliente</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div style="display:flex;gap:.5rem;justify-content:flex-end">
+                    <a class="button" th:href="@{/instructor/rutinas}">Cancelar</a>
+                    <button class="button is-primary" type="submit">Asignar y editar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</section>
+</body>
+</html>
