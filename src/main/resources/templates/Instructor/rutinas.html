@@ -1,0 +1,81 @@
+<!--/*@thymesVar name="rutinas" type="java.util.List<com.example.gym1.Poo.Rutina>" */-->
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width,initial-scale=1"/>
+    <title>DEBUG Gym — Rutinas (Instructor)</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+    <style>
+        :root{--bg:#0a0a0e;--ink:#f2f2f2;--muted:#b7b7c2;--accent:#ffc107;--card:#111118;--line:#1b1b25}
+        html,body{background:var(--bg);color:var(--ink)}
+        .cardx{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:1rem}
+        .muted{color:var(--muted)}
+        a{color:var(--accent)}
+        .btn-main{background:var(--accent);color:#111;padding:.45rem .8rem;border-radius:8px;border:none;font-weight:800}
+        table{width:100%;color:var(--ink)}
+        th,td{padding:.5rem .75rem}
+    </style>
+</head>
+<body>
+<nav class="navbar">
+    <div class="container">
+        <div class="navbar-brand">
+            <a class="navbar-item brand" href="/instructor">DEBUG Gym · Instructor</a>
+        </div>
+        <div class="navbar-menu">
+            <div class="navbar-end">
+                <div class="navbar-item"><a class="button is-light" href="/instructor">Panel</a></div>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<section class="section">
+    <div class="container">
+        <div class="cardx">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+                <div>
+                    <div style="color:var(--accent);font-weight:800;letter-spacing:.08em;text-transform:uppercase;font-size:.8rem">Rutinas</div>
+                    <h2 class="title is-4">Rutinas</h2>
+                    <p class="muted">Crea y asigna rutinas a tus clientes.</p>
+                </div>
+                <div>
+                    <a href="/instructor/rutinas/crear" class="btn-main">+ Nueva rutina</a>
+                </div>
+            </div>
+
+            <div style="overflow-x:auto">
+                <table>
+                    <thead>
+                    <tr>
+                        <th>Nombre</th>
+                        <th>Cliente</th>
+                        <th>Descripción</th>
+                        <th style="width:160px">Acciones</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="r : ${rutinas}">
+                        <td th:text="${r.nombre}">Nombre</td>
+                        <td th:text="${r.cliente != null ? r.cliente.nombre : '—'}">Cliente</td>
+                        <td th:text="${r.descripcion}">Descripción</td>
+                        <td>
+                            <a class="button is-small is-link" th:href="@{|/instructor/rutinas/editar/${r.id}|}">Editar</a>
+                            <form th:action="@{|/instructor/rutinas/eliminar/${r.id}|}" method="post" style="display:inline" onsubmit="return confirm('¿Eliminar rutina?');">
+                                <button class="button is-small is-danger" type="submit">Eliminar</button>
+                            </form>
+                        </td>
+                    </tr>
+                    <tr th:if="${#lists.isEmpty(rutinas)}">
+                        <td colspan="4" class="muted">No hay rutinas aún.</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+
+        </div>
+    </div>
+</section>
+</body>
+</html>

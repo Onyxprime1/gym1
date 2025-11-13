@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<!--/*@thymesVar name="rutina" type="com.example.gym1.Poo.Rutina" */-->
+<!--/*@thymesVar name="ejercicios" type="java.util.List" */-->
+<!--/*@thymesVar name="clientes" type="java.util.List" */-->
+<!--/*@thymesVar name="detallesJson" type="java.lang.String" */-->
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width,initial-scale=1"/>
+    <title th:text="${rutina != null ? (rutina.id == null ? 'Crear rutina' : 'Editar rutina') : 'Crear rutina'}">Rutina</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+    <style>
+        :root{--bg:#0a0a0e;--ink:#f2f2f2;--muted:#b7b7c2;--accent:#ffc107;--card:#111118;--line:#1b1b25}
+        html,body{background:var(--bg);color:var(--ink)}
+        .cardx{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:1rem}
+        label{font-weight:700}
+        .muted{color:var(--muted)}
+        .btn-main{background:var(--accent);color:#111;padding:.45rem .8rem;border-radius:8px;border:none;font-weight:800}
+        .detalle-row{display:flex;gap:.5rem;align-items:center;margin-bottom:.5rem}
+        .detalle-row .small-input{width:90px;}
+        .detalle-row .day-input{width:140px;}
+        .selected-row{display:flex;gap:.5rem;align-items:center;padding:.25rem 0;border-bottom:1px solid rgba(255,255,255,.02)}
+    </style>
+</head>
+<body>
+<nav class="navbar">
+    <div class="container">
+        <div class="navbar-brand"><a class="navbar-item brand" href="/instructor">DEBUG Gym · Instructor</a></div>
+        <div class="navbar-menu"><div class="navbar-end"><div class="navbar-item"><a class="button is-light" href="/instructor/rutinas">Volver</a></div></div></div>
+    </div>
+</nav>
+
+<section class="section">
+    <div class="container">
+        <div class="cardx" style="max-width:1000px;margin:0 auto">
+            <h2 class="title is-4" th:text="${rutina != null ? (rutina.id == null ? 'Crear rutina' : 'Editar rutina') : 'Crear rutina'}">Formulario Rutina</h2>
+
+            <form th:action="@{/instructor/rutinas/guardar}" th:object="${rutina}" method="post">
+                <input type="hidden" th:field="*{id}"/>
+
+                <div class="field">
+                    <label class="label">Nombre</label>
+                    <div class="control"><input class="input" type="text" th:field="*{nombre}" required/></div>
+                </div>
+
+                <div class="field">
+                    <label class="label">Descripción</label>
+                    <div class="control"><textarea class="textarea" th:field="*{descripcion}" rows="3"></textarea></div>
+                </div>
+
+                <div class="field">
+                    <label class="label">Asignar a cliente</label>
+                    <div class="control">
+                        <div class="select">
+                            <select name="clienteId">
+                                <option value="">-- Sin asignar --</option>
+                                <option th:each="c : ${clientes}"
+                                        th:value="${c.id}"
+                                        th:text="${c.nombre}"
+                                        th:selected="${rutina != null and rutina.cliente != null and rutina.cliente.id == c.id}">
+                                    Cliente
+                                </option>
+                            </select>
+                        </div>
+                        <p class="muted">Selecciona el cliente al que asignar esta rutina.</p>
+                    </div>
+                </div>
+
+                <hr/>
+
+                <!-- Sección dinámica de ejercicios -->
+                <h3 class="title is-5">Ejercicios (marca para añadir y completa serie/reps/día)</h3>
+                <div class="muted" style="margin-bottom:.5rem">Marca los ejercicios que pertenecerán a la rutina y define serie, repeticiones y día.</div>
+
+                <div style="max-height:260px; overflow:auto; padding:.5rem; border:1px solid rgba(255,255,255,.03); border-radius:8px; margin-bottom:.75rem">
+                    <div th:each="e : ${ejercicios}">
+                        <label style="display:flex;align-items:center;gap:.5rem;margin-bottom:.25rem">
+                            <input type="checkbox"
+                                   class="exercise-checkbox"
+                                   th:attr="data-eid=${e.id},data-nombre=${e.nombre},data-musculo=${e.musculo}"
+                                   th:value="${e.id}" />
+                            <span th:text="${e.nombre + (e.musculo != null ? ' — ' + e.musculo : '')}">Ejercicio</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Contenedor donde JS añadirá los inputs reales que se enviarán -->
+                <div id="selected-exercises" style="display:flex;flex-direction:column;gap:.5rem;margin-bottom:1rem"></div>
+
+                <!-- Inyectamos JSON seguro para el JS (detallesJson viene del controlador) -->
+                <span id="existing-details-json" style="display:none" th:utext="${detallesJson}">[]</span>
+
+                <!-- Opcional: añadir por select -->
+                <div style="display:flex;gap:.5rem;align-items:center;margin-bottom:1rem">
+                    <select id="all-exercises-select" style="min-width:280px">
+                        <option value="">-- Seleccionar ejercicio --</option>
+                        <option th:each="e : ${ejercicios}" th:value="${e.id}" th:text="${e.nombre + (e.musculo != null ? ' — ' + e.musculo : '')}"></option>
+                    </select>
+                    <button id="btn-add-exercise" type="button" class="button is-light">Añadir</button>
+                </div>
+
+                <div style="display:flex;gap:.5rem;justify-content:flex-end;margin-top:1rem">
+                    <a class="button is-light" href="/instructor/rutinas">Cancelar</a>
+                    <button type="submit" class="btn-main">Guardar rutina</button>
+                </div>
+            </form>
+
+        </div>
+    </div>
+</section>
+
+<!-- Script para manejar el formulario dinámico -->
+<script src="/js/rutina-form.js"></script>
+</body>
+</html>
