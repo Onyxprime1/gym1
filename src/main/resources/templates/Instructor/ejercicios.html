@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>DEBUG Gym — Ejercicios (Instructor)</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+    <style>
+        :root{--bg:#0a0a0e;--ink:#f2f2f2;--muted:#b7b7c2;--accent:#ffc107;--card:#111118;--line:#1b1b25}
+        html,body{background:var(--bg);color:var(--ink)}
+        .navbar{background:#0b0b12;border-bottom:1px solid rgba(255,255,255,.06)}
+        .brand{color:var(--accent);font-weight:900;letter-spacing:.6px}
+        .cardx{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:1rem}
+        .muted{color:var(--muted)}
+        table{width:100%;color:var(--ink)}
+        thead{background:#0e0e13}
+        th,td{padding:.5rem .75rem;font-size:.95rem}
+        tbody tr:nth-child(even){background:#0d0d12}
+        a{color:var(--accent)}
+        .btn-main{background:var(--accent);color:#111;padding:.45rem .8rem;border-radius:8px;border:none;font-weight:800}
+    </style>
+</head>
+<body>
+
+<nav class="navbar" role="navigation">
+    <div class="container">
+        <div class="navbar-brand">
+            <a class="navbar-item brand" href="/instructor">DEBUG Gym · Instructor</a>
+        </div>
+        <div class="navbar-menu">
+            <div class="navbar-end">
+                <div class="navbar-item">
+                    <a class="button is-light" href="/instructor">Panel</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<section class="section">
+    <div class="container">
+        <div class="cardx">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+                <div>
+                    <div style="color:var(--accent);font-weight:800;letter-spacing:.08em;text-transform:uppercase;font-size:.8rem">Ejercicios</div>
+                    <h2 class="title is-4">Lista de ejercicios</h2>
+                    <p class="muted">Gestiona los ejercicios disponibles.</p>
+                </div>
+                <div>
+                    <a href="/instructor/ejercicios/nuevo" class="btn-main">+ Nuevo ejercicio</a>
+                </div>
+            </div>
+
+            <form action="/instructor/ejercicios" method="get" style="margin-bottom:1rem;display:flex;gap:.5rem;align-items:center">
+                <input class="input" type="text" name="q" placeholder="Buscar por nombre, descripción o músculo" th:value="${q}" style="max-width:420px"/>
+                <button class="button is-dark" type="submit">Buscar</button>
+                <a class="button is-light" href="/instructor/ejercicios">Limpiar</a>
+            </form>
+
+            <div style="overflow-x:auto">
+                <table>
+                    <thead>
+                    <tr>
+                        <th>Nombre</th>
+                        <th>Músculo</th>
+                        <th>Descripción</th>
+                        <th style="width:160px">Acciones</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="ej : ${ejercicios}">
+                        <td th:text="${ej.nombre}">Nombre</td>
+                        <td th:text="${ej.musculo}">Músculo</td>
+                        <td th:text="${ej.descripcion != null ? (ej.descripcion.length() > 120 ? ej.descripcion.substring(0,120) + '...' : ej.descripcion) : ''}">Descripción corta</td>
+                        <td>
+                            <a class="button is-small is-link" th:href="@{|/instructor/ejercicios/editar/${ej.id}|}">Editar</a>
+                            <form th:action="@{|/instructor/ejercicios/eliminar/${ej.id}|}" method="post" style="display:inline" onsubmit="return confirm('¿Eliminar ejercicio?');">
+                                <button class="button is-small is-danger" type="submit">Eliminar</button>
+                            </form>
+                        </td>
+                    </tr>
+                    <tr th:if="${#lists.isEmpty(ejercicios)}">
+                        <td colspan="4" class="muted">No hay ejercicios aún.</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+
+        </div>
+    </div>
+</section>
+
+</body>
+</html>

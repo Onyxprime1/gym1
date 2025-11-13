@@ -37,14 +37,24 @@ public class LoginController {
             session.setAttribute("uid", u.getId());
             session.setAttribute("unombre", u.getNombre());
 
-            // ⚠ Guardamos el ID del rol y el nombre, para usarlo después
+            // Guardamos el ID del rol y el nombre, para usarlo después
             if (u.getRol() != null) {
-                session.setAttribute("rolId", u.getRol().getId());       // ej: 1 = admin, 4 = cliente
+                session.setAttribute("rolId", u.getRol().getId());       // ej: 1 = admin, 4 = cliente, etc.
                 session.setAttribute("rolNombre", u.getRol().getNombre()); // opcional
             }
 
-            // Siempre redirigimos a /inicio
-            return "redirect:/inicio";
+            // Redirigir según rol:
+            String rolNombre = u.getRol() != null && u.getRol().getNombre() != null
+                    ? u.getRol().getNombre().toLowerCase()
+                    : "";
+
+            if (rolNombre.contains("instructor")) {
+                return "redirect:/instructor/ejercicios";
+            } else if (rolNombre.contains("admin") || rolNombre.contains("administrador")) {
+                return "redirect:/admin";
+            } else {
+                return "redirect:/inicio";
+            }
         }
 
         model.addAttribute("error", "Correo o contraseña incorrectos");

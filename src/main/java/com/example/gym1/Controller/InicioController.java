@@ -28,24 +28,27 @@ public class InicioController {
             return "redirect:/login";
         }
 
-        // 1.1) Verificar rolId → si es 1 (ADMIN), ir a admin.html
+        // REDIRECCIÓN: si el usuario es INSTRUCTOR, mandarlo al panel de instructor
+        String rolNombreSession = Optional.ofNullable((String) session.getAttribute("rolNombre"))
+                .orElse("").toLowerCase();
         Integer rolId = (Integer) session.getAttribute("rolId");
-        // InicioController.java
-
-        if (rolId != null && rolId == 1) {   // admin
-            model.addAttribute("nombre", nombreUsuario);
-            return "Administrador/admin";    // <── ruta correcta
+        if (rolNombreSession.contains("instructor")) {
+            return "redirect:/instructor/ejercicios";
         }
 
+        // 1.1) Verificar rolId → si es 1 (ADMIN), ir a admin.html
+        if (rolId != null && rolId == 1) {   // admin
+            model.addAttribute("nombre", nombreUsuario);
+            return "Administrador/admin";
+        }
 
         // Siempre mandamos el nombre del USUARIO a la vista inicio.html
         model.addAttribute("nombre", nombreUsuario);
 
         // 2) Buscar si este usuario tiene un CLIENTE asociado
         Number idClienteNum = (Number) em.createNativeQuery(
-                        "SELECT c.id_cliente " +
-                                "FROM clientes c WHERE c.id_usuario = :uid")
-                .setParameter("uid", uid)
+                        "SELECT c.id_cliente FROM clientes c WHERE c.id_usuario = ?")
+                .setParameter(1, uid)
                 .getResultStream()
                 .findFirst()
                 .orElse(null);
@@ -63,14 +66,15 @@ public class InicioController {
 
         Integer idCliente = idClienteNum.intValue();
 
-        // 3) Última membresía del cliente
+        // 3) Última membresía del cliente (native query con parámetro posicional y setMaxResults(1))
         Object[] mem = (Object[]) em.createNativeQuery(
                         "SELECT m.tipo, cm.fecha_inicio, cm.fecha_fin, m.precio " +
                                 "FROM cliente_membresia cm " +
                                 "JOIN membresias m ON m.id_membresia = cm.id_membresia " +
-                                "WHERE cm.id_cliente = :cid " +
-                                "ORDER BY cm.fecha_fin DESC LIMIT 1")
-                .setParameter("cid", idCliente)
+                                "WHERE cm.id_cliente = ? " +
+                                "ORDER BY cm.fecha_fin DESC")
+                .setParameter(1, idCliente)
+                .setMaxResults(1)
                 .getResultStream()
                 .findFirst()
                 .orElse(null);
@@ -89,18 +93,21 @@ public class InicioController {
             }
         }
 
-        // 4) Contar rutinas y dietas asignadas al cliente
-        Number rutinas = (Number) em.createNativeQuery(
-                        "SELECT COUNT(*) FROM rutinas WHERE id_cliente = :cid")
-                .setParameter("cid", idCliente)
+        // 4) Contar rutinas y dietas asignadas al cliente (native queries con parámetro posicional)
+        Number rutinasNum = (Number) em.createNativeQuery(
+                        "SELECT COUNT(*) FROM rutinas WHERE id_cliente = ?")
+                .setParameter(1, idCliente)
                 .getSingleResult();
 
-        Number dietas = (Number) em.createNativeQuery(
-                        "SELECT COUNT(*) FROM dietas WHERE id_cliente = :cid")
-                .setParameter("cid", idCliente)
+        Number dietasNum = (Number) em.createNativeQuery(
+                        "SELECT COUNT(*) FROM dietas WHERE id_cliente = ?")
+                .setParameter(1, idCliente)
                 .getSingleResult();
 
-        boolean premium = (rutinas.intValue() + dietas.intValue()) > 0;
+        int rutinas = rutinasNum != null ? rutinasNum.intValue() : 0;
+        int dietas = dietasNum != null ? dietasNum.intValue() : 0;
+
+        boolean premium = (rutinas + dietas) > 0;
         String planNivel = premium ? "El Gran Machote (Premium)" : "Básico";
 
         // 5) Poner todo en el modelo para la vista
@@ -108,8 +115,8 @@ public class InicioController {
         model.addAttribute("vigente", vigente);
         model.addAttribute("proxPago", proxPago);
         model.addAttribute("estado", estado);
-        model.addAttribute("rutinasCount", rutinas.intValue());
-        model.addAttribute("dietasCount", dietas.intValue());
+        model.addAttribute("rutinasCount", rutinas);
+        model.addAttribute("dietasCount", dietas);
 
         return "inicio";
     }
