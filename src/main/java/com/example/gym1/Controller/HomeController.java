@@ -8,9 +8,9 @@ import org.springframework.web.bind.annotation.GetMapping;
 public class HomeController {
 
     // HomeController
-    @GetMapping("/inicio")
-    public String inicio() {
-        return "inicio"; // templates/inicio.html
+    @GetMapping({"/","/index"})
+    public String home() {
+        return "index"; // templates/inicio.html
     }
 
 }

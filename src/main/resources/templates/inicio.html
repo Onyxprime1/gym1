@@ -1,10 +1,199 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
 <head>
-    <meta charset="UTF-8">
-    <title>Title</title>
+    <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>DEBUG Gym — Panel del Cliente</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+    <style>
+        :root{--bg:#0a0a0e;--ink:#f2f2f2;--muted:#b7b7c2;--accent:#ffc107;--card:#111118;--line:#1b1b25;--ok:#22c55e;--warn:#f59e0b;--danger:#ef4444}
+        html,body{background:var(--bg);color:var(--ink)}
+        .navbar{background:#0b0b12;border-bottom:1px solid rgba(255,255,255,.06)}
+        .brand{color:var(--accent);font-weight:900;letter-spacing:.6px}
+        .section{padding:2.75rem 1.25rem}
+        .cardx{background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:0 12px 28px rgba(0,0,0,.33)}
+        .kicker{color:var(--accent);font-weight:800;letter-spacing:.08em;text-transform:uppercase;font-size:.8rem}
+        .muted{color:var(--muted)}
+        .badge{display:inline-flex;align-items:center;gap:.4rem;border-radius:999px;padding:.35rem .7rem;font-weight:800;font-size:.8rem;border:1px solid var(--line);background:rgba(255,255,255,.02)}
+        .badge.ok{border-color:rgba(34,197,94,.35);color:#d1fadf}
+        .badge.warn{border-color:rgba(245,158,11,.35);color:#fff7d6}
+        .badge.danger{border-color:rgba(239,68,68,.35);color:#ffe1e1}
+        .btn-accent{background:var(--accent);border-color:var(--accent);color:#151515;font-weight:900;border-radius:12px}
+        .btn-ghost{background:transparent;border:2px solid var(--accent);color:var(--accent);font-weight:900;border-radius:12px}
+        .tile-app{display:flex;flex-direction:column;gap:.65rem;padding:1.2rem}
+        .tile-app .title{margin-bottom:.2rem}
+        .icon-round{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;background:#1a1a22;border:1px solid var(--line)}
+        .grid{display:grid;gap:1rem}
+        @media(min-width:769px){.grid{grid-template-columns:repeat(12,1fr)}}
+        .hover-up{transition:.2s transform ease,.2s box-shadow ease}
+        .hover-up:hover{transform:translateY(-3px);box-shadow:0 16px 34px rgba(0,0,0,.44)}
+        hr{background:var(--line);height:1px;border:none;margin:1rem 0}
+        .small{font-size:.9rem}
+        a{color:var(--accent)}
+    </style>
 </head>
 <body>
+<nav class="navbar" role="navigation">
+    <div class="container">
+        <div class="navbar-brand">
+            <a class="navbar-item brand" href="/">DEBUG Gym</a>
+            <a role="button" class="navbar-burger" aria-label="menu" aria-expanded="false" data-target="navMain">
+                <span aria-hidden="true"></span><span aria-hidden="true"></span><span aria-hidden="true"></span>
+            </a>
+        </div>
+        <div id="navMain" class="navbar-menu">
+            <div class="navbar-end">
+                <div class="navbar-item">
+                    <span id="navPlan" class="badge" th:text="${planNivel}">—</span>
+                    <a id="btnSalir" class="button is-small btn-ghost ml-3" href="/login">Salir</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</nav>
 
+<section class="section">
+    <div class="container">
+
+        <div class="columns is-vcentered">
+            <div class="column">
+                <span class="kicker">Bienvenido</span>
+                <h1 class="title is-3" th:text="'Hola, ' + ${nombre} + '.'">Hola, Atleta.</h1>
+                <p class="muted">Aquí ves tu estado de membresía, accesos rápidos y próximos pasos.</p>
+            </div>
+            <div class="column is-narrow">
+                <div id="chipMembresia"
+                     class="badge"
+                     th:classappend="${vigente} ? ' ok' : ' danger'"
+                     th:text="'Membresía: ' + (${vigente} ? 'Activa' : 'Vencida')">
+                    Membresía: —
+                </div>
+            </div>
+        </div>
+
+        <div id="alertEstado"
+             class="notification is-hidden"
+             th:class="'notification ' + (${vigente} ? 'is-hidden' : 'is-danger is-light')"
+             th:utext="'Tu membresía está vencida. <a href=&quot;/pagos&quot;><strong>Renueva ahora</strong></a>.'">
+        </div>
+
+        <div class="cardx p-5 mb-5">
+            <div class="columns">
+                <div class="column">
+                    <p class="small muted">Plan actual</p>
+                    <h3 class="title is-5" th:text="${planNivel}">—</h3>
+                </div>
+                <div class="column">
+                    <p class="small muted">Próximo pago</p>
+                    <h3 class="title is-5" th:text="${proxPago}">—</h3>
+                </div>
+                <div class="column">
+                    <p class="small muted">Estado</p>
+                    <h3 class="title is-5" th:text="${estado}">—</h3>
+                </div>
+                <div class="column is-narrow">
+                    <a class="button btn-accent" href="/pagos">Ir a Pagos</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid">
+            <div class="cardx hover-up tile-app" style="grid-column:span 6;">
+                <div class="is-flex is-align-items-center is-justify-content-space-between">
+                    <div class="is-flex is-align-items-center" style="gap:.8rem">
+                        <div class="icon-round">🏋️</div>
+                        <div>
+                            <h4 class="title is-5">Rutinas</h4>
+                            <p class="muted small"
+                               th:text="${planNivel.contains('Premium')} ? 'Rutinas personalizadas asignadas por tu instructor.' : 'Acceso a rutinas estándar y creador local.'">
+                                —
+                            </p>
+                        </div>
+                    </div>
+                    <a class="button btn-ghost" href="/rutinas">Abrir</a>
+                </div>
+                <hr>
+                <div class="is-flex is-flex-wrap-wrap" style="gap:.5rem">
+                    <span class="badge ok" th:if="${planNivel.contains('Premium')}">Personalizadas</span>
+                    <span class="badge" th:if="${planNivel.contains('Premium')}">Progresión semanal</span>
+                    <span class="badge" th:if="${!planNivel.contains('Premium')}">Estándar</span>
+                    <span class="badge" th:if="${!planNivel.contains('Premium')}">Creador local</span>
+                    <span class="badge" th:text="${rutinasCount} + ' rutinas'">0 rutinas</span>
+                </div>
+            </div>
+
+            <div class="cardx hover-up tile-app" style="grid-column:span 6;">
+                <div class="is-flex is-align-items-center is-justify-content-space-between">
+                    <div class="is-flex is-align-items-center" style="gap:.8rem">
+                        <div class="icon-round">🥗</div>
+                        <div>
+                            <h4 class="title is-5">Nutrición</h4>
+                            <p class="muted small"
+                               th:text="${planNivel.contains('Premium')} ? 'Plan de alimentación personalizado por nutriólogo.' : 'Menús estándar sugeridos.'">
+                                —
+                            </p>
+                        </div>
+                    </div>
+                    <a class="button btn-ghost" href="/dietas">Abrir</a>
+                </div>
+                <hr>
+                <div class="is-flex is-flex-wrap-wrap" style="gap:.5rem">
+                    <span class="badge ok" th:if="${planNivel.contains('Premium')}">Personalizadas</span>
+                    <span class="badge" th:if="${planNivel.contains('Premium')}">Preferencias & presupuesto</span>
+                    <span class="badge" th:if="${!planNivel.contains('Premium')}">Menús estándar</span>
+                    <span class="badge" th:text="${dietasCount} + ' dietas'">0 dietas</span>
+                </div>
+            </div>
+
+            <div class="cardx hover-up tile-app" style="grid-column:span 6;">
+                <div class="is-flex is-align-items-center is-justify-content-space-between">
+                    <div class="is-flex is-align-items-center" style="gap:.8rem">
+                        <div class="icon-round">📈</div>
+                        <div>
+                            <h4 class="title is-5">Progreso</h4>
+                            <p class="muted small">Registra peso, medidas y % de grasa. Visualiza tu evolución.</p>
+                        </div>
+                    </div>
+                    <a class="button btn-ghost" href="/progreso">Abrir</a>
+                </div>
+            </div>
+
+            <div class="cardx hover-up tile-app" style="grid-column:span 6;">
+                <div class="is-flex is-align-items-center is-justify-content-space-between">
+                    <div class="is-flex is-align-items-center" style="gap:.8rem">
+                        <div class="icon-round">💳</div>
+                        <div>
+                            <h4 class="title is-5">Pagos</h4>
+                            <p class="muted small">Consulta tu historial, estado actual y renueva tu plan.</p>
+                        </div>
+                    </div>
+                    <a class="button btn-ghost" href="/pagos">Abrir</a>
+                </div>
+            </div>
+        </div>
+
+        <div id="notaPremium" class="notification is-warning is-light mt-5"
+             th:classappend="${planNivel.contains('Premium')} ? ' is-hidden' : ''">
+            <strong>Contenido Premium:</strong> Las rutinas y dietas personalizadas requieren membresía <em>El Gran Machote</em> activa al día.
+        </div>
+
+    </div>
+</section>
+
+<footer class="footer" style="background:#0b0b12;border-top:1px solid rgba(255,255,255,.06)">
+    <div class="content has-text-centered">
+        <p class="muted">Proyecto Académico — Plataforma de Gimnasio · 2025</p>
+    </div>
+</footer>
+
+<script>
+    // burger
+    document.addEventListener('DOMContentLoaded', () => {
+        const burgers=[...document.querySelectorAll('.navbar-burger')];
+        burgers.forEach(b=>b.addEventListener('click',()=> {
+            const t=document.getElementById(b.dataset.target);
+            b.classList.toggle('is-active'); if(t) t.classList.toggle('is-active');
+        }));
+    });
+</script>
 </body>
 </html>

@@ -50,6 +50,6 @@ public class LoginController {
     @PostMapping("/registro")
     public String procesarRegistro(@ModelAttribute Usuario usuario) {
         em.persist(usuario);
-        return "redirect:/login"; // después de crear, ir a login
+        return "redirect:/inicio"; // después de crear, ir a login
     }
 }
