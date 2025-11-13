@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Panel Administrativo — DEBUG Gym</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+    <style>
+        body { background:#0a0a0e; color:#f2f2f2; }
+        .cardx { background:#111118; padding:2rem; border-radius:16px; }
+        .title, .subtitle { color:#ffc107; }
+    </style>
+</head>
+<body>
+
+<section class="section">
+    <div class="container">
+
+        <h1 class="title">Panel Administrativo</h1>
+        <h2 class="subtitle">Bienvenido, administrador</h2>
+
+        <div class="cardx">
+            <p class="mb-4">Selecciona una opción:</p>
+
+            <a class="button is-warning is-light is-fullwidth mb-2" href="/admin/usuarios">Gestionar usuarios</a>
+            <a class="button is-warning is-light is-fullwidth mb-2" href="/admin/clientes">Gestionar clientes</a>
+            <a class="button is-warning is-light is-fullwidth mb-2" href="/admin/membresias">Membresías</a>
+            <a class="button is-warning is-light is-fullwidth" href="/admin/reportes">Reportes</a>
+        </div>
+
+        <a href="/login" class="button is-small is-light mt-4">Cerrar sesión</a>
+
+    </div>
+</section>
+
+</body>
+</html>

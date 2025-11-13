@@ -37,13 +37,19 @@ public class LoginController {
             session.setAttribute("uid", u.getId());
             session.setAttribute("unombre", u.getNombre());
 
+            // ⚠ Guardamos el ID del rol y el nombre, para usarlo después
+            if (u.getRol() != null) {
+                session.setAttribute("rolId", u.getRol().getId());       // ej: 1 = admin, 4 = cliente
+                session.setAttribute("rolNombre", u.getRol().getNombre()); // opcional
+            }
+
+            // Siempre redirigimos a /inicio
             return "redirect:/inicio";
         }
 
         model.addAttribute("error", "Correo o contraseña incorrectos");
         return "login";
     }
-
 
     // GET: mostrar formulario de registro
     @GetMapping("/registro")
@@ -52,7 +58,7 @@ public class LoginController {
         return "registro";
     }
 
-    // POST: procesar registro  👉 AQUÍ se asigna rol 4 = Cliente
+    // POST: procesar registro → asigna rol 4 = Cliente
     @Transactional
     @PostMapping("/registro")
     public String procesarRegistro(@ModelAttribute Usuario usuario) {
@@ -60,17 +66,13 @@ public class LoginController {
         // Buscar el rol CLIENTE (id_rol = 4)
         Rol rolCliente = em.find(Rol.class, 4);
         if (rolCliente == null) {
-            // Si por alguna razón no existe, mejor lanzar error claro
             throw new IllegalStateException("No existe el rol con id_rol = 4 (Cliente) en la tabla roles.");
         }
 
-        // Asignar rol al usuario
         usuario.setRol(rolCliente);
 
-        // Guardar en BD
         em.persist(usuario);
 
-        // Después de registrarse, lo mandas al login
         return "redirect:/login";
     }
 }

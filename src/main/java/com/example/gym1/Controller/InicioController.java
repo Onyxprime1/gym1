@@ -28,11 +28,20 @@ public class InicioController {
             return "redirect:/login";
         }
 
-        // Siempre mandamos el nombre del USUARIO
+        // 1.1) Verificar rolId → si es 1 (ADMIN), ir a admin.html
+        Integer rolId = (Integer) session.getAttribute("rolId");
+        // InicioController.java
+
+        if (rolId != null && rolId == 1) {   // admin
+            model.addAttribute("nombre", nombreUsuario);
+            return "Administrador/admin";    // <── ruta correcta
+        }
+
+
+        // Siempre mandamos el nombre del USUARIO a la vista inicio.html
         model.addAttribute("nombre", nombreUsuario);
 
         // 2) Buscar si este usuario tiene un CLIENTE asociado
-        //    Solo necesitamos el id_cliente
         Number idClienteNum = (Number) em.createNativeQuery(
                         "SELECT c.id_cliente " +
                                 "FROM clientes c WHERE c.id_usuario = :uid")
@@ -75,7 +84,7 @@ public class InicioController {
             if (fin != null) {
                 LocalDate fechaFin = fin.toLocalDate();
                 vigente = !fechaFin.isBefore(LocalDate.now());
-                proxPago = fechaFin.toString(); // luego lo puedes formatear más bonito
+                proxPago = fechaFin.toString();
                 estado = vigente ? "Activa" : "Vencida";
             }
         }
@@ -93,7 +102,6 @@ public class InicioController {
 
         boolean premium = (rutinas.intValue() + dietas.intValue()) > 0;
         String planNivel = premium ? "El Gran Machote (Premium)" : "Básico";
-
 
         // 5) Poner todo en el modelo para la vista
         model.addAttribute("planNivel", planNivel);
