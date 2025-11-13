@@ -11,11 +11,9 @@ public class AdminController {
     @GetMapping("/admin")
     public String panelAdmin(Model model, HttpSession session) {
 
-        // Traer el nombre del usuario (si lo deseas mostrar arriba)
         String nombre = (String) session.getAttribute("unombre");
         model.addAttribute("nombre", nombre != null ? nombre : "Administrador");
-
-        return "Administrador/admin"; // 👈 IMPORTANTÍSIMO
+        return "Administrador/admin";
     }
 
     @GetMapping("/admin/usuarios")
