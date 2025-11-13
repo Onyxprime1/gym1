@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>DEBUG Gym • Platillos</title>
+    <link rel="stylesheet" th:href="@{/css/styles.css}">
+</head>
+<body class="bg-dark">
+
+<header class="topbar">
+    <div class="logo">DEBUG Gym • Nutriólogo</div>
+    <div class="user-info">
+        <a th:href="@{/nutriologo/panel}" class="btn btn-sm btn-outline">Volver al panel</a>
+    </div>
+</header>
+
+<main class="container">
+
+    <section class="page-header">
+        <h1>Platillos</h1>
+        <p>Catálogo de platillos disponibles para armar las dietas de tus clientes.</p>
+    </section>
+
+    <!-- ALERTAS -->
+    <div th:if="${success}" class="alert alert-success" th:text="${success}"></div>
+    <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
+
+    <!-- BUSCADOR Y BOTÓN NUEVO -->
+    <section class="toolbar">
+        <form th:action="@{/nutriologo/platillos}" method="get" class="search-form">
+            <input type="text" name="q" placeholder="Buscar por nombre o tipo"
+                   th:value="${q}" class="input-text">
+            <button type="submit" class="btn btn-primary">Buscar</button>
+        </form>
+
+        <a th:href="@{/nutriologo/platillos/nuevo}" class="btn btn-success">
+            + Nuevo platillo
+        </a>
+    </section>
+
+    <!-- TABLA DE PLATILLOS -->
+    <section class="card">
+        <table class="table">
+            <thead>
+            <tr>
+                <th>ID</th>
+                <th>Nombre</th>
+                <th>Tipo</th>
+                <th>Calorías</th>
+                <th>Proteínas</th>
+                <th>Carbohidratos</th>
+                <th>Grasas</th>
+                <th style="width: 150px;">Acciones</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="p : ${platillos}">
+                <td th:text="${p.idPlatillo}">1</td>
+                <td th:text="${p.nombre}">Ejemplo</td>
+                <td th:text="${p.tipo}">Desayuno</td>
+                <td th:text="${p.calorias}">0</td>
+                <td th:text="${p.proteinas}">0</td>
+                <td th:text="${p.carbohidratos}">0</td>
+                <td th:text="${p.grasas}">0</td>
+                <td>
+                    <a th:href="@{'/nutriologo/platillos/editar/' + ${p.idPlatillo}}"
+                       class="btn btn-sm btn-warning">Editar</a>
+
+                    <form th:action="@{'/nutriologo/platillos/eliminar/' + ${p.idPlatillo}}"
+                          method="post" style="display:inline-block"
+                          onsubmit="return confirm('¿Seguro que deseas eliminar este platillo?');">
+                        <button type="submit" class="btn btn-sm btn-danger">Eliminar</button>
+                    </form>
+                </td>
+            </tr>
+
+            <tr th:if="${#lists.isEmpty(platillos)}">
+                <td colspan="8" style="text-align:center;">No hay platillos registrados.</td>
+            </tr>
+            </tbody>
+        </table>
+    </section>
+
+</main>
+
+<footer class="footer">
+    DEBUG Gym • Módulo de Nutriólogo • 2025
+</footer>
+
+</body>
+</html>

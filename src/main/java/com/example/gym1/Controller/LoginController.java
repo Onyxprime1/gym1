@@ -52,6 +52,8 @@ public class LoginController {
                 return "redirect:/instructor/ejercicios";
             } else if (rolNombre.contains("admin") || rolNombre.contains("administrador")) {
                 return "redirect:/admin";
+            } else if (rolNombre.contains("nutriologo")) {   // NUEVO
+                return "redirect:/nutriologo/panel";
             } else {
                 return "redirect:/inicio";
             }

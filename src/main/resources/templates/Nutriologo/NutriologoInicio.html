@@ -1,10 +1,206 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
 <head>
-    <meta charset="UTF-8">
-    <title>Title</title>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>DEBUG Gym — Panel Nutriólogo</title>
+
+    <!-- Mismo Bulma + estilos que usas en ejercicios -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+    <style>
+        :root{--bg:#0a0a0e;--ink:#f2f2f2;--muted:#b7b7c2;--accent:#ffc107;--card:#111118;--line:#1b1b25}
+        html,body{background:var(--bg);color:var(--ink)}
+        .navbar{background:#0b0b12;border-bottom:1px solid rgba(255,255,255,.06)}
+        .brand{color:var(--accent);font-weight:900;letter-spacing:.6px}
+        .cardx{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:1.5rem}
+        .muted{color:var(--muted)}
+        a{color:var(--accent)}
+        .btn-main{background:var(--accent);color:#111;padding:.45rem .9rem;border-radius:8px;border:none;font-weight:800}
+
+        /* NUEVO: grid 2x2 */
+        .dash-grid{
+            display:grid;
+            grid-template-columns:repeat(2,minmax(0,1fr));
+            gap:1.25rem;
+            margin-top:1rem;
+        }
+        @media (max-width:768px){
+            .dash-grid{
+                grid-template-columns:1fr;
+            }
+        }
+
+        /* NUEVO: tarjeta con icono a la izquierda */
+        .dash-item{
+            background:#0f0f16;
+            border-radius:12px;
+            padding:1rem 1.2rem;
+            border:1px solid var(--line);
+            display:flex;
+            align-items:flex-start;
+            gap:1rem;
+        }
+
+        /* círculo del icono */
+        .dash-icon-circle{
+            width:56px;
+            height:56px;
+            border-radius:50%;
+            border:1px solid rgba(255,255,255,0.08);
+            background:#12121a;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            flex-shrink:0;
+        }
+        .dash-icon-circle span{
+            font-size:1.6rem;
+        }
+
+        /* texto y botón */
+        .dash-item-text{
+            flex:1;
+        }
+        .dash-item-text h3{
+            margin-bottom:.25rem;
+        }
+        .dash-item-text p{
+            font-size:.9rem;
+        }
+        .dash-item-actions{
+            margin-top:.6rem;
+        }
+
+    </style>
+    <style>
+        :root{--bg:#0a0a0e;--ink:#f2f2f2;--muted:#b7b7c2;--accent:#ffc107;--card:#111118;--line:#1b1b25}
+        /* ... lo que ya tienes ... */
+
+        .dash-icon-circle{
+            width:56px;
+            height:56px;
+            border-radius:50%;
+            border:1px solid rgba(255,255,255,0.08);
+            background:#12121a;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            margin-bottom:.75rem;
+        }
+        .dash-icon-circle span{
+            font-size:1.6rem;
+        }
+    </style>
+
 </head>
 <body>
+
+<!-- NAVBAR -->
+<nav class="navbar" role="navigation">
+    <div class="container">
+        <div class="navbar-brand">
+            <a class="navbar-item brand" href="/nutriologo/panel">DEBUG Gym · Nutriólogo</a>
+        </div>
+        <div class="navbar-menu">
+            <div class="navbar-end">
+                <div class="navbar-item muted">
+                    Hola, <span th:text="${nombreNutriologo}">Nutriólogo</span>
+                </div>
+                <div class="navbar-item">
+                    <a class="button is-light" href="/logout">Cerrar sesión</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<section class="section">
+    <div class="container">
+        <div class="cardx">
+            <!-- Encabezado -->
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+                <div>
+                    <div style="color:var(--accent);font-weight:800;letter-spacing:.08em;text-transform:uppercase;font-size:.8rem">
+                        Panel de Nutriólogo
+                    </div>
+                    <h2 class="title is-4">Control general de nutrición</h2>
+                    <p class="muted">
+                        Gestiona tus pacientes, dietas, platillos y reportes desde un solo lugar.
+                    </p>
+                </div>
+            </div>
+
+            <!-- GRID DE OPCIONES (similar al dashboard) -->
+            <div class="dash-grid">
+
+                <!-- PACIENTES -->
+                <div class="dash-item">
+                    <div class="dash-icon-circle">
+                        <span>🧍</span>
+                    </div>
+                    <div class="dash-item-text">
+                        <h3 class="title is-5">Pacientes</h3>
+                        <p class="muted">
+                            Lista de clientes a tu cargo, historial básico y estado de sus planes de alimentación.
+                        </p>
+                        <div class="dash-item-actions">
+                            <a class="btn-main" href="/nutriologo/clientes">Ver pacientes</a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- DIETAS -->
+                <div class="dash-item">
+                    <div class="dash-icon-circle">
+                        <span>🍎</span>
+                    </div>
+                    <div class="dash-item-text">
+                        <h3 class="title is-5">Dietas</h3>
+                        <p class="muted">
+                            Crea, edita y asigna dietas personalizadas según objetivos y restricciones.
+                        </p>
+                        <div class="dash-item-actions">
+                            <a class="btn-main" href="/nutriologo/dietas">Gestionar dietas</a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PLATILLOS -->
+                <div class="dash-item">
+                    <div class="dash-icon-circle">
+                        <span>🥗</span>
+                    </div>
+                    <div class="dash-item-text">
+                        <h3 class="title is-5">Platillos</h3>
+                        <p class="muted">
+                            Catálogo de platillos (desayuno, comida, cena, snack) con calorías y macronutrientes.
+                        </p>
+                        <div class="dash-item-actions">
+                            <a class="btn-main" href="/nutriologo/platillos">Ver platillos</a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- REPORTES -->
+                <div class="dash-item">
+                    <div class="dash-icon-circle">
+                        <span>📈</span>
+                    </div>
+                    <div class="dash-item-text">
+                        <h3 class="title is-5">Reportes</h3>
+                        <p class="muted">
+                            Visualiza el progreso del paciente: peso, medidas y adherencia a la dieta.
+                        </p>
+                        <div class="dash-item-actions">
+                            <a class="btn-main" href="/nutriologo/reportes">Ver reportes</a>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+</section>
 
 </body>
 </html>
