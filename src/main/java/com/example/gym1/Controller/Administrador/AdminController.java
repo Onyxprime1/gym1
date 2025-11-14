@@ -24,7 +24,7 @@ public class AdminController {
     }
 
     // 🔹 AQUÍ ya cargamos los usuarios desde la BD
-    @GetMapping("/admin/usuarios")
+
     public String adminUsuarios(Model model) {
 
         List<Usuario> usuarios = em.createQuery(
