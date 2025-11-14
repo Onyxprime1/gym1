@@ -2,166 +2,49 @@
 <html lang="es" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>DEBUG Gym — Administración de Usuarios</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
-    <style>
-        :root{--bg:#0a0a0e;--ink:#f2f2f2;--muted:#b7b7c2;--accent:#ffc107;--card:#111118;--line:#1b1b25;--ok:#22c55e;--danger:#ef4444}
-        html,body{background:var(--bg);color:var(--ink)}
-        .navbar{background:#0b0b12;border-bottom:1px solid rgba(255,255,255,.06)}
-        .brand{color:var(--accent);font-weight:900;letter-spacing:.6px}
-        .section{padding:2.5rem 1.5rem}
-        .cardx{background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:0 12px 28px rgba(0,0,0,.33)}
-        .kicker{color:var(--accent);font-weight:800;letter-spacing:.08em;text-transform:uppercase;font-size:.8rem}
-        .muted{color:var(--muted)}
-        .badge{display:inline-flex;align-items:center;gap:.3rem;border-radius:999px;padding:.2rem .6rem;font-size:.75rem;border:1px solid var(--line)}
-        .badge-ok{background:rgba(34,197,94,.12);border-color:rgba(34,197,94,.6);color:#bbf7d0}
-        .badge-off{background:rgba(148,163,184,.15);border-color:rgba(148,163,184,.6);color:#e2e8f0}
-        table{width:100%;color:var(--ink)}
-        thead{background:#111118}
-        th,td{padding:.55rem .75rem;font-size:.9rem}
-        tbody tr:nth-child(even){background:#111118}
-        a{color:var(--accent)}
-        .tag-filter{margin-right:.25rem;font-size:.75rem}
-    </style>
+    <title>Listado de usuarios</title>
+    <link rel="stylesheet"
+          href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
 </head>
-<body>
-
-<!-- NAV -->
-<nav class="navbar" role="navigation">
-    <div class="container">
-        <div class="navbar-brand">
-            <a class="navbar-item brand" href="/admin">DEBUG Gym · Admin</a>
-            <span class="navbar-burger" data-target="navMain">
-                <span></span><span></span><span></span>
-            </span>
-        </div>
-        <div id="navMain" class="navbar-menu">
-            <div class="navbar-start">
-                <a class="navbar-item" href="/admin/usuarios">Usuarios</a>
-                <a class="navbar-item" href="/admin/clientes">Clientes</a>
-                <a class="navbar-item" href="/admin/instructores">Instructores</a>
-                <a class="navbar-item" href="/admin/nutriologos">Nutriólogos</a>
-                <a class="navbar-item" href="/admin/membresias">Membresías</a>
-                <a class="navbar-item" href="/admin/reportes">Reportes</a>
-            </div>
-            <div class="navbar-end">
-                <div class="navbar-item">
-                    <a class="button is-small is-light" href="/inicio">Ver panel de cliente</a>
-                    <a class="button is-small" href="/login">Salir</a>
-                </div>
-            </div>
-        </div>
-    </div>
-</nav>
-
+<body class="has-background-dark has-text-light">
 <section class="section">
     <div class="container">
+        <h1 class="title has-text-warning">Usuarios</h1>
+        <p class="subtitle has-text-grey-light">
+            Prueba sencilla: leer usuarios desde la BD.
+        </p>
 
-        <!-- Encabezado -->
-        <div class="columns is-vcentered mb-4">
-            <div class="column">
-                <span class="kicker">Administración</span>
-                <h1 class="title is-4">Usuarios y roles</h1>
-                <p class="muted">Aquí ves todos los usuarios del sistema y si están vinculados como clientes, instructores o nutriólogos.</p>
-            </div>
-            <div class="column is-narrow">
-                <div class="tags are-medium">
-                    <span class="tag is-dark tag-filter" th:text="'Usuarios: ' + ${totalUsuarios}">Usuarios: 0</span>
-                    <span class="tag is-link tag-filter" th:text="'Clientes: ' + ${totalClientes}">Clientes: 0</span>
-                    <span class="tag is-info tag-filter" th:text="'Instructores: ' + ${totalInstructores}">Instructores: 0</span>
-                    <span class="tag is-success tag-filter" th:text="'Nutriólogos: ' + ${totalNutriologos}">Nutriólogos: 0</span>
-                </div>
-            </div>
+        <div class="table-container">
+            <table class="table is-striped is-fullwidth is-dark">
+                <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Nombre</th>
+                    <th>Correo</th>
+                    <th>Rol (id_rol)</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="u : ${usuarios}">
+                    <td th:text="${u.id}"></td>
+                    <td th:text="${u.nombre}"></td>
+                    <td th:text="${u.correo}"></td>
+                    <td th:text="${u.rol != null ? u.rol.nombre : 'Sin rol'}"></td>
+                </tr>
+
+
+
+                <tr th:if="${#lists.isEmpty(usuarios)}">
+                    <td colspan="4" class="has-text-centered">
+                        No hay usuarios en la base de datos.
+                    </td>
+                </tr>
+                </tbody>
+            </table>
         </div>
 
-        <!-- Tabla -->
-        <div class="cardx p-4">
-            <div class="is-flex is-justify-content-space-between is-align-items-center mb-3">
-                <div>
-                    <strong>Listado de usuarios</strong>
-                    <p class="muted" style="font-size:.8rem">Puedes usar este listado como base para asignar clientes, instructores o nutriólogos desde otros módulos.</p>
-                </div>
-                <!-- Botón futuro para crear usuario -->
-                <!-- <a class="button is-small is-warning">Nuevo usuario</a> -->
-            </div>
-
-            <div class="table-container">
-                <table>
-                    <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Nombre</th>
-                        <th>Correo</th>
-                        <th>Rol</th>
-                        <th class="has-text-centered">Cliente</th>
-                        <th class="has-text-centered">Instructor</th>
-                        <th class="has-text-centered">Nutriólogo</th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    <tr th:each="u : ${usuarios}">
-                        <td th:text="${u.id}">1</td>
-                        <td th:text="${u.nombre}">Nombre Apellido</td>
-                        <td th:text="${u.correo}">correo@ejemplo.com</td>
-                        <td th:text="${u.rol}">Cliente</td>
-
-                        <td class="has-text-centered">
-                            <span th:if="${u.esCliente}"
-                                  class="badge badge-ok">Sí</span>
-                            <span th:if="${!u.esCliente}"
-                                  class="badge badge-off">No</span>
-                        </td>
-
-                        <td class="has-text-centered">
-                            <span th:if="${u.esInstructor}"
-                                  class="badge badge-ok">Sí</span>
-                            <span th:if="${!u.esInstructor}"
-                                  class="badge badge-off">No</span>
-                        </td>
-
-                        <td class="has-text-centered">
-                            <span th:if="${u.esNutriologo}"
-                                  class="badge badge-ok">Sí</span>
-                            <span th:if="${!u.esNutriologo}"
-                                  class="badge badge-off">No</span>
-                        </td>
-                    </tr>
-
-                    <tr th:if="${#lists.isEmpty(usuarios)}">
-                        <td colspan="7" class="has-text-centered muted">
-                            No hay usuarios registrados.
-                        </td>
-                    </tr>
-                    </tbody>
-                </table>
-            </div>
-
-            <p class="muted" style="font-size:.8rem">
-                Para gestionar datos específicos (peso, altura, experiencia, etc.) ve a los apartados
-                <a href="/admin/clientes">Clientes</a>,
-                <a href="/admin/instructores">Instructores</a> o
-                <a href="/admin/nutriologos">Nutriólogos</a>.
-            </p>
-        </div>
+        <a href="/" class="button is-light">Volver al inicio</a>
     </div>
 </section>
-
-<footer class="footer" style="background:#0b0b12;border-top:1px solid rgba(255,255,255,.06)">
-    <div class="content has-text-centered">
-        <p class="muted">DEBUG Gym · Módulo de Administración</p>
-    </div>
-</footer>
-
-<script>
-    document.addEventListener('DOMContentLoaded', () => {
-        const burgers = Array.from(document.querySelectorAll('.navbar-burger'));
-        burgers.forEach(b => b.addEventListener('click', () => {
-            const t = document.getElementById(b.dataset.target);
-            b.classList.toggle('is-active');
-            if (t) t.classList.toggle('is-active');
-        }));
-    });
-</script>
 </body>
 </html>
