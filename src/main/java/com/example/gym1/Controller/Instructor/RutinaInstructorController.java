@@ -1,277 +1,599 @@
 package com.example.gym1.Controller.Instructor;
 
-import com.example.gym1.Poo.Cliente;
 import com.example.gym1.Poo.Ejercicio;
 import com.example.gym1.Poo.Instructor;
 import com.example.gym1.Poo.Rutina;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityManagerFactory;
+import jakarta.persistence.EntityTransaction;
 import jakarta.persistence.PersistenceContext;
 import jakarta.servlet.http.HttpSession;
+import org.hibernate.exception.SQLGrammarException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionCallback;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.util.*;
-import java.util.stream.Collectors;
+import java.util.function.Consumer;
 
 /**
- * Controlador para gestión de rutinas (crear/editar/listar/eliminar/asignar).
- * Actualizado: el formulario de crear/editar no contiene selección de cliente;
- * muestra todos los ejercicios y lista de músculos para filtrar.
+ * Controlador único consolidado:
+ * - sin referencias a la columna 'peso'
+ * - operaciones de borrado ejecutadas en EntityManager aislado (runInIsolatedEm)
+ * - inserciones/updates ejecutadas con TransactionTemplate (txTemplate) por fila
+ * - logging con SLF4J
  */
 @Controller
 @RequestMapping("/instructor/rutinas")
 public class RutinaInstructorController {
 
+    private static final Logger logger = LoggerFactory.getLogger(RutinaInstructorController.class);
+
     @PersistenceContext
     private EntityManager em;
 
-    private final ObjectMapper mapper = new ObjectMapper();
+    private final TransactionTemplate txTemplate;
+    private final PlatformTransactionManager txManager;
 
-    // LISTAR rutinas del instructor (sin cambios)
+    @Autowired
+    public RutinaInstructorController(PlatformTransactionManager txManager) {
+        this.txManager = txManager;
+        this.txTemplate = new TransactionTemplate(txManager);
+    }
+
+    // Ejecuta una acción usando un EntityManager nuevo y su propia transacción local.
+    private void runInIsolatedEm(Consumer<EntityManager> action) {
+        EntityManagerFactory emf;
+        try {
+            emf = em.getEntityManagerFactory();
+        } catch (Exception ex) {
+            // Fallback: si no está disponible, ejecutar con txTemplate sobre el EM compartido
+            logger.warn("EntityManagerFactory no disponible, fallback a txTemplate: {}", ex.getMessage());
+            txTemplate.execute(status -> {
+                try {
+                    action.accept(em);
+                } catch (RuntimeException rex) {
+                    logger.warn("Fallback action failed: {}", rex.getMessage(), rex);
+                    throw rex;
+                }
+                return null;
+            });
+            return;
+        }
+
+        EntityManager emIsolated = null;
+        EntityTransaction tx = null;
+        try {
+            emIsolated = emf.createEntityManager();
+            tx = emIsolated.getTransaction();
+            tx.begin();
+            action.accept(emIsolated);
+            tx.commit();
+        } catch (RuntimeException ex) {
+            try {
+                if (tx != null && tx.isActive()) tx.rollback();
+            } catch (Exception rbEx) {
+                logger.warn("rollback failed on isolated tx: {}", rbEx.getMessage(), rbEx);
+            }
+            logger.warn("Isolated EM action failed: {}", ex.getMessage(), ex);
+            throw ex;
+        } finally {
+            if (emIsolated != null && emIsolated.isOpen()) {
+                try { emIsolated.close(); } catch (Exception ignored) {}
+            }
+        }
+    }
+
     @GetMapping
-    public String listar(HttpSession session, Model model) {
+    public String listarRutinas(HttpSession session, Model model) {
         Integer uid = (Integer) session.getAttribute("uid");
         if (uid == null) return "redirect:/login";
 
-        Instructor instructor = em.createQuery(
-                        "SELECT i FROM Instructor i WHERE i.usuario.id = :uid", Instructor.class)
+        Instructor instructor = em.createQuery("SELECT i FROM Instructor i WHERE i.usuario.id = :uid", Instructor.class)
                 .setParameter("uid", uid)
                 .getResultStream().findFirst().orElse(null);
+        if (instructor == null) return "redirect:/instructor";
 
-        if (instructor == null) {
-            model.addAttribute("error", "Instructor no encontrado");
-            return "instructor/rutinas";
-        }
-
-        List<Rutina> rutinas = em.createQuery(
-                        "SELECT r FROM Rutina r WHERE r.instructor.id = :iid ORDER BY r.id DESC", Rutina.class)
+        List<Rutina> rutinas = em.createQuery("SELECT r FROM Rutina r WHERE r.instructor.id = :iid ORDER BY r.nombre", Rutina.class)
                 .setParameter("iid", instructor.getId())
                 .getResultList();
 
-        model.addAttribute("rutinas", rutinas);
+        List<RutinaView> views = new ArrayList<>();
+        for (Rutina r : rutinas) {
+            RutinaView rv = new RutinaView();
+            rv.rutina = r;
+            rv.detalles = new ArrayList<>();
+
+            boolean success = false;
+            String[] orderings = new String[]{"rd.id", "rd.id_ejercicio", "rd.id_rutina, rd.id_ejercicio", ""};
+
+            for (String order : orderings) {
+                String orderClause = (order != null && !order.trim().isEmpty()) ? (" ORDER BY " + order) : "";
+                String sql = "SELECT rd.id as detalle_id, rd.id_ejercicio, rd.dia_semana, rd.series, rd.repeticiones, e.nombre as ejercicio_nombre " +
+                        "FROM rutina_detalle rd LEFT JOIN ejercicio e ON e.id = rd.id_ejercicio " +
+                        "WHERE rd.id_rutina = ? " + orderClause;
+                try {
+                    @SuppressWarnings("unchecked")
+                    List<Object[]> rows = em.createNativeQuery(sql)
+                            .setParameter(1, r.getId())
+                            .getResultList();
+
+                    if (rows != null) {
+                        for (Object[] row : rows) {
+                            if (row.length >= 6) {
+                                Detalle d = new Detalle();
+                                d.detalleId = row[0] != null ? ((Number) row[0]).intValue() : null;
+                                d.ejercicioId = row[1] != null ? ((Number) row[1]).intValue() : null;
+                                d.diaSemana = row[2] != null ? row[2].toString() : "";
+                                d.series = row[3] != null ? ((Number) row[3]).intValue() : null;
+                                d.repeticiones = row[4] != null ? ((Number) row[4]).intValue() : null;
+                                d.ejercicioNombre = row[5] != null ? row[5].toString() : "Ejercicio";
+                                rv.detalles.add(d);
+                            }
+                        }
+                    }
+                    success = true;
+                    break;
+                } catch (SQLGrammarException ignored) {
+                } catch (Exception ex) {
+                    logger.debug("Ignored exception while trying ordering variant: {}", ex.getMessage());
+                }
+            }
+
+            if (!success) {
+                try {
+                    @SuppressWarnings("unchecked")
+                    List<Object[]> rows2 = em.createNativeQuery("SELECT * FROM rutina_detalle WHERE id_rutina = ?")
+                            .setParameter(1, r.getId())
+                            .getResultList();
+                    if (rows2 != null) {
+                        for (Object[] row : rows2) {
+                            Detalle d = mapRowToDetalleFlexible(row, r.getId());
+                            rv.detalles.add(d);
+                        }
+                        success = true;
+                    }
+                } catch (Exception ex) {
+                    logger.debug("Fallback SELECT * failed: {}", ex.getMessage());
+                }
+            }
+
+            StringJoiner sj = new StringJoiner(" ");
+            if (r.getNombre() != null) sj.add(r.getNombre());
+            if (r.getDescripcion() != null) sj.add(r.getDescripcion());
+            if (rv.detalles != null) {
+                for (Detalle d : rv.detalles) {
+                    if (d.ejercicioNombre != null && !d.ejercicioNombre.isEmpty()) sj.add(d.ejercicioNombre);
+                }
+            }
+            rv.searchText = sj.toString();
+            views.add(rv);
+        }
+
+        List<Ejercicio> ejercicios = em.createQuery("SELECT e FROM Ejercicio e ORDER BY e.nombre", Ejercicio.class)
+                .getResultList();
+
+        model.addAttribute("rutinasViews", views);
+        model.addAttribute("ejercicios", ejercicios);
+        model.addAttribute("nombre", session.getAttribute("unombre"));
         return "instructor/rutinas";
     }
 
-    // FORM crear: NO devolvemos lista de clientes, sí ejercicios y lista de músculos
     @GetMapping("/crear")
-    public String crearForm(HttpSession session, Model model,
-                            @RequestParam(value = "clienteId", required = false) Integer clienteId) {
+    public String crearForm(HttpSession session, Model model) {
         Integer uid = (Integer) session.getAttribute("uid");
         if (uid == null) return "redirect:/login";
 
-        Instructor instructor = em.createQuery(
-                        "SELECT i FROM Instructor i WHERE i.usuario.id = :uid", Instructor.class)
-                .setParameter("uid", uid)
-                .getResultStream().findFirst().orElse(null);
-        if (instructor == null) {
-            model.addAttribute("error", "Instructor no encontrado");
-            return "instructor/rutina-form";
-        }
-
-        // Todos los ejercicios
         List<Ejercicio> ejercicios = em.createQuery("SELECT e FROM Ejercicio e ORDER BY e.nombre", Ejercicio.class)
                 .getResultList();
+        List<String> musculos = new ArrayList<>();
+        for (Ejercicio e : ejercicios) {
+            if (e.getMusculo() != null && !e.getMusculo().isBlank() && !musculos.contains(e.getMusculo())) musculos.add(e.getMusculo());
+        }
 
-        // Lista de músculos distintos (para el filtro)
-        List<String> musculos = ejercicios.stream()
-                .map(Ejercicio::getMusculo)
-                .filter(Objects::nonNull)
-                .map(String::trim)
-                .filter(s -> !s.isEmpty())
-                .distinct()
-                .sorted(String::compareToIgnoreCase)
-                .collect(Collectors.toList());
-
+        model.addAttribute("rutina", new Rutina());
         model.addAttribute("ejercicios", ejercicios);
         model.addAttribute("musculos", musculos);
-        model.addAttribute("rutina", new Rutina());
-        model.addAttribute("detallesJson", "[]"); // JS espera JSON
+        model.addAttribute("detallesJson", "[]");
         return "instructor/rutina-form";
     }
 
-    // FORM editar (mantiene comportamiento anterior, pero también provee músculos y ejercicios)
     @GetMapping("/editar/{id}")
-    public String editarForm(@PathVariable Integer id, HttpSession session, Model model, RedirectAttributes ra) {
+    public String editarForm(@PathVariable Integer id, HttpSession session, Model model) {
         Integer uid = (Integer) session.getAttribute("uid");
         if (uid == null) return "redirect:/login";
-
         Rutina rutina = em.find(Rutina.class, id);
-        if (rutina == null) {
-            ra.addFlashAttribute("error", "Rutina no encontrada");
-            return "redirect:/instructor/rutinas";
-        }
-
-        Instructor instructor = em.createQuery(
-                        "SELECT i FROM Instructor i WHERE i.usuario.id = :uid", Instructor.class)
-                .setParameter("uid", uid)
-                .getResultStream().findFirst().orElse(null);
-        if (instructor == null) {
-            ra.addFlashAttribute("error", "Instructor no encontrado");
-            return "redirect:/instructor/rutinas";
-        }
-
-        // protección: solo el instructor dueño puede editar la rutina
-        if (rutina.getInstructor() == null || !Objects.equals(rutina.getInstructor().getId(), instructor.getId())) {
-            ra.addFlashAttribute("error", "No tienes permiso para editar esta rutina");
-            return "redirect:/instructor/rutinas";
-        }
+        if (rutina == null) return "redirect:/instructor/rutinas";
 
         List<Ejercicio> ejercicios = em.createQuery("SELECT e FROM Ejercicio e ORDER BY e.nombre", Ejercicio.class)
                 .getResultList();
+        List<String> musculos = new ArrayList<>();
+        for (Ejercicio e : ejercicios) {
+            if (e.getMusculo() != null && !e.getMusculo().isBlank() && !musculos.contains(e.getMusculo())) musculos.add(e.getMusculo());
+        }
 
-        List<String> musculos = ejercicios.stream()
-                .map(Ejercicio::getMusculo)
-                .filter(Objects::nonNull)
-                .map(String::trim)
-                .filter(s -> !s.isEmpty())
-                .distinct()
-                .sorted(String::compareToIgnoreCase)
-                .collect(Collectors.toList());
+        List<Map<String,Object>> detalles = new ArrayList<>();
+        try {
+            @SuppressWarnings("unchecked")
+            List<Object[]> rows = em.createNativeQuery(
+                            "SELECT rd.id, rd.id_ejercicio, rd.dia_semana, rd.series, rd.repeticiones " +
+                                    "FROM rutina_detalle rd WHERE rd.id_rutina = ? ORDER BY rd.id")
+                    .setParameter(1, id)
+                    .getResultList();
 
-        // Cargar detalles desde la tabla rutina_detalle
-        @SuppressWarnings("unchecked")
-        List<Object[]> rows = em.createNativeQuery(
-                        "SELECT id_ejercicio, dia_semana, series, repeticiones FROM rutina_detalle WHERE id_rutina = ? ORDER BY id_ejercicio")
-                .setParameter(1, rutina.getId())
-                .getResultList();
+            if (rows != null) {
+                for (Object[] row : rows) {
+                    Integer detalleId = null;
+                    Integer ejercicioId = null;
+                    String dia = "";
+                    Integer series = null;
+                    Integer repes = null;
 
-        List<Map<String, Object>> dto = new ArrayList<>();
-        for (Object[] row : rows) {
-            Map<String, Object> m = new HashMap<>();
-            Integer idEj = row[0] != null ? ((Number) row[0]).intValue() : null;
-            String dia = row[1] != null ? row[1].toString() : null;
-            Integer series = row[2] != null ? ((Number) row[2]).intValue() : null;
-            Integer reps = row[3] != null ? ((Number) row[3]).intValue() : null;
-            m.put("id", idEj);
-            m.put("dia", dia);
-            m.put("serie", series);
-            m.put("repeticiones", reps);
-            if (idEj != null) {
-                Ejercicio e = em.find(Ejercicio.class, idEj);
-                if (e != null) {
-                    m.put("nombre", e.getNombre());
-                    m.put("musculo", e.getMusculo());
+                    if (row.length >= 5) {
+                        if (row[0] instanceof Number) detalleId = ((Number) row[0]).intValue();
+                        if (row[1] instanceof Number) ejercicioId = ((Number) row[1]).intValue();
+                        dia = row[2] != null ? row[2].toString() : "";
+                        if (row[3] instanceof Number) series = ((Number) row[3]).intValue();
+                        if (row[4] instanceof Number) repes = ((Number) row[4]).intValue();
+                    }
+
+                    String nombreEj = "";
+                    String musculo = "";
+                    if (ejercicioId != null) {
+                        try {
+                            Ejercicio ej = em.find(Ejercicio.class, ejercicioId);
+                            if (ej != null) {
+                                nombreEj = ej.getNombre();
+                                musculo = ej.getMusculo();
+                            }
+                        } catch (Exception ignored) { }
+                    }
+
+                    Map<String,Object> m = new HashMap<>();
+                    m.put("detalleId", detalleId);
+                    m.put("id", ejercicioId);
+                    m.put("nombre", nombreEj);
+                    m.put("musculo", musculo);
+                    m.put("serie", series);
+                    m.put("repeticiones", repes);
+                    m.put("dia", dia);
+                    detalles.add(m);
                 }
             }
-            dto.add(m);
-        }
-
-        String detallesJson = "[]";
-        try {
-            detallesJson = mapper.writeValueAsString(dto);
         } catch (Exception ex) {
-            ex.printStackTrace();
+            logger.debug("Could not load detalles for rutina {}: {}", id, ex.getMessage());
         }
 
+        String detallesJson = toJsonArray(detalles);
+
+        model.addAttribute("rutina", rutina);
         model.addAttribute("ejercicios", ejercicios);
         model.addAttribute("musculos", musculos);
-        model.addAttribute("rutina", rutina);
         model.addAttribute("detallesJson", detallesJson);
         return "instructor/rutina-form";
     }
 
-    // GUARDAR rutina + detalles (mantiene cliente opcional; formulario ya no envía cliente)
     @PostMapping("/guardar")
-    @Transactional
-    public String guardar(@ModelAttribute Rutina rutina,
-                          @RequestParam(value = "clienteId", required = false) Integer clienteId,
-                          @RequestParam(value = "ejercicioId", required = false) List<Integer> ejercicioIds,
-                          @RequestParam(value = "serie", required = false) List<Integer> series,
-                          @RequestParam(value = "repeticiones", required = false) List<Integer> repeticiones,
-                          @RequestParam(value = "dia", required = false) List<String> dias,
-                          HttpSession session,
-                          RedirectAttributes ra) {
-
+    public String guardarRutina(@ModelAttribute Rutina rutina,
+                                @RequestParam(value = "ejercicioId", required = false) List<Integer> ejercicioIds,
+                                @RequestParam(value = "series", required = false) List<Integer> seriesList,
+                                @RequestParam(value = "repeticiones", required = false) List<Integer> repesList,
+                                @RequestParam(value = "dia", required = false) List<String> dias,
+                                HttpSession session) {
         Integer uid = (Integer) session.getAttribute("uid");
         if (uid == null) return "redirect:/login";
 
-        Instructor instructor = em.createQuery(
-                        "SELECT i FROM Instructor i WHERE i.usuario.id = :uid", Instructor.class)
-                .setParameter("uid", uid)
-                .getResultStream().findFirst().orElse(null);
-        if (instructor == null) {
-            ra.addFlashAttribute("error", "Instructor no encontrado");
-            return "redirect:/instructor/rutinas";
-        }
+        final Rutina rutinaToPersist = rutina;
 
-        rutina.setInstructor(instructor);
+        Integer rutinaId = txTemplate.execute((TransactionCallback<Integer>) status -> {
+            if (rutinaToPersist.getId() == null) {
+                try {
+                    Instructor instr = em.createQuery("SELECT i FROM Instructor i WHERE i.usuario.id = :uid", Instructor.class)
+                            .setParameter("uid", uid)
+                            .getResultStream().findFirst().orElse(null);
+                    if (instr != null) rutinaToPersist.setInstructor(instr);
+                } catch (Exception ignored) {}
+                em.persist(rutinaToPersist);
+                em.flush();
+            } else {
+                em.merge(rutinaToPersist);
+                em.flush();
+            }
 
-        // Si por alguna razón llega clienteId (ahora opcional), lo asociamos; normalmente no vendrá desde la UI
-        if (clienteId != null) {
             try {
-                Cliente cRef = em.getReference(Cliente.class, clienteId);
-                rutina.setCliente(cRef);
-            } catch (Exception ex) {
-                ra.addFlashAttribute("error", "Cliente no encontrado");
-                return "redirect:/instructor/rutinas/crear";
-            }
-        } else {
-            rutina.setCliente(null);
-        }
-
-        if (rutina.getId() == null) {
-            em.persist(rutina);
-            em.flush();
-        } else {
-            rutina = em.merge(rutina);
-        }
-        Integer rutinaId = rutina.getId();
-
-        em.createNativeQuery("DELETE FROM rutina_detalle WHERE id_rutina = ?")
-                .setParameter(1, rutinaId)
-                .executeUpdate();
-
-        if (ejercicioIds != null && !ejercicioIds.isEmpty()) {
-            for (int i = 0; i < ejercicioIds.size(); i++) {
-                Integer eid = ejercicioIds.get(i);
-                if (eid == null) continue;
-                Integer s = (series != null && series.size() > i) ? series.get(i) : null;
-                Integer rps = (repeticiones != null && repeticiones.size() > i) ? repeticiones.get(i) : null;
-                String d = (dias != null && dias.size() > i) ? dias.get(i) : null;
-
-                em.createNativeQuery("INSERT INTO rutina_detalle (id_rutina, id_ejercicio, dia_semana, series, repeticiones) VALUES (?, ?, ?, ?, ?)")
-                        .setParameter(1, rutinaId)
-                        .setParameter(2, eid)
-                        .setParameter(3, d)
-                        .setParameter(4, s)
-                        .setParameter(5, rps)
+                em.createNativeQuery("DELETE FROM rutina_detalle WHERE id_rutina = ?")
+                        .setParameter(1, rutinaToPersist.getId())
                         .executeUpdate();
+            } catch (Exception ignored) {}
+
+            return rutinaToPersist.getId();
+        });
+
+        if (ejercicioIds != null && !ejercicioIds.isEmpty() && rutinaId != null) {
+            final Integer finalRutinaId = rutinaId;
+            int n = ejercicioIds.size();
+            for (int i = 0; i < n; i++) {
+                final Integer ejId = ejercicioIds.get(i);
+                final Integer s = (seriesList != null && seriesList.size() > i) ? seriesList.get(i) : null;
+                final Integer r = (repesList != null && repesList.size() > i) ? repesList.get(i) : null;
+                final String dia = (dias != null && dias.size() > i) ? dias.get(i) : null;
+
+                try {
+                    txTemplate.execute(status -> {
+                        em.createNativeQuery("INSERT INTO rutina_detalle (id_rutina, id_ejercicio, dia_semana, series, repeticiones) VALUES (?, ?, ?, ?, ?)")
+                                .setParameter(1, finalRutinaId)
+                                .setParameter(2, ejId)
+                                .setParameter(3, dia)
+                                .setParameter(4, s)
+                                .setParameter(5, r)
+                                .executeUpdate();
+                        return null;
+                    });
+                } catch (Exception ex) {
+                    logger.warn("no se pudo insertar detalle (ejercicioId={}): {}", ejId, ex.getMessage(), ex);
+                }
             }
         }
 
-        ra.addFlashAttribute("success", "Rutina guardada correctamente");
         return "redirect:/instructor/rutinas";
     }
 
-    // ELIMINAR rutina (sin cambios)
+    @PostMapping("/{rutinaId}/detalles/agregar")
+    public String agregarDetalle(@PathVariable Integer rutinaId,
+                                 @RequestParam("ejercicioId") Integer ejercicioId,
+                                 @RequestParam(value = "diaSemana", required = false) String diaSemana,
+                                 @RequestParam(value = "series", required = false) Integer series,
+                                 @RequestParam(value = "repeticiones", required = false) Integer repeticiones,
+                                 HttpSession session) {
+        Integer uid = (Integer) session.getAttribute("uid");
+        if (uid == null) return "redirect:/login";
+        final Integer rid = rutinaId;
+        final Integer ejId = ejercicioId;
+        final Integer s = series;
+        final Integer r = repeticiones;
+        final String dia = diaSemana;
+
+        runInIsolatedEm(emIso -> {
+            emIso.createNativeQuery("INSERT INTO rutina_detalle (id_rutina, id_ejercicio, dia_semana, series, repeticiones) VALUES (?, ?, ?, ?, ?)")
+                    .setParameter(1, rid)
+                    .setParameter(2, ejId)
+                    .setParameter(3, dia)
+                    .setParameter(4, s)
+                    .setParameter(5, r)
+                    .executeUpdate();
+        });
+
+        return "redirect:/instructor/rutinas";
+    }
+
+    @PostMapping("/{rutinaId}/detalles/eliminar/{detalleId}")
+    public String eliminarDetallePorId(@PathVariable Integer rutinaId, @PathVariable Integer detalleId, HttpSession session) {
+        Integer uid = (Integer) session.getAttribute("uid");
+        if (uid == null) return "redirect:/login";
+        final Integer did = detalleId;
+
+        runInIsolatedEm(emIso -> {
+            emIso.createNativeQuery("DELETE FROM rutina_detalle WHERE id = ?")
+                    .setParameter(1, did)
+                    .executeUpdate();
+        });
+
+        return "redirect:/instructor/rutinas";
+    }
+
+    @PostMapping("/{rutinaId}/detalles/eliminar")
+    public String eliminarDetalleFallback(@PathVariable Integer rutinaId,
+                                          @RequestParam(value = "ejercicioId", required = false) Integer ejercicioId,
+                                          @RequestParam(value = "diaSemana", required = false) String diaSemana,
+                                          HttpSession session) {
+        Integer uid = (Integer) session.getAttribute("uid");
+        if (uid == null) return "redirect:/login";
+        final Integer rid = rutinaId;
+        final Integer ejId = ejercicioId;
+        final String dia = diaSemana;
+
+        runInIsolatedEm(emIso -> {
+            if (ejId != null && dia != null) {
+                emIso.createNativeQuery("DELETE FROM rutina_detalle WHERE id_rutina = ? AND id_ejercicio = ? AND dia_semana = ?")
+                        .setParameter(1, rid)
+                        .setParameter(2, ejId)
+                        .setParameter(3, dia)
+                        .executeUpdate();
+            }
+        });
+
+        return "redirect:/instructor/rutinas";
+    }
+
     @PostMapping("/eliminar/{id}")
-    @Transactional
-    public String eliminar(@PathVariable Integer id, HttpSession session, RedirectAttributes ra) {
+    public String eliminarRutina(@PathVariable Integer id, HttpSession session) {
+        Integer uid = (Integer) session.getAttribute("uid");
+        if (uid == null) return "redirect:/login";
+        final Integer rid = id;
+
+        runInIsolatedEm(emIso -> {
+            // borrar detalles vía SQL nativo (ya existe rutina_detalle)
+            emIso.createNativeQuery("DELETE FROM rutina_detalle WHERE id_rutina = ?").setParameter(1, rid).executeUpdate();
+            // borrar Rutina usando JPQL (usa el mapeo de la entidad Rutina)
+            emIso.createQuery("DELETE FROM Rutina r WHERE r.id = :id").setParameter("id", rid).executeUpdate();
+        });
+
+        return "redirect:/instructor/rutinas";
+    }
+
+    @PostMapping("/{rutinaId}/detalles/guardar")
+    public String guardarDetallesYRutina(
+            @PathVariable Integer rutinaId,
+            @RequestParam(value = "nombre", required = false) String nombre,
+            @RequestParam(value = "descripcion", required = false) String descripcion,
+            @RequestParam(value = "detalleId", required = false) List<Integer> detalleIds,
+            @RequestParam(value = "ejercicioId", required = false) List<Integer> ejercicioIds,
+            @RequestParam(value = "dia", required = false) List<String> dias,
+            @RequestParam(value = "series", required = false) List<Integer> seriesList,
+            @RequestParam(value = "repeticiones", required = false) List<Integer> repesList,
+            HttpSession session
+    ) {
         Integer uid = (Integer) session.getAttribute("uid");
         if (uid == null) return "redirect:/login";
 
-        Rutina r = em.find(Rutina.class, id);
-        if (r == null) {
-            ra.addFlashAttribute("error", "Rutina no encontrada");
-            return "redirect:/instructor/rutinas";
+        final Integer rid = rutinaId;
+        final String n = nombre;
+        final String d = descripcion;
+
+        if ((n != null && !n.isBlank()) || (d != null)) {
+            txTemplate.execute(status -> {
+                em.createQuery("UPDATE Rutina r SET r.nombre = :n, r.descripcion = :d WHERE r.id = :id")
+                        .setParameter("n", n != null ? n : "")
+                        .setParameter("d", d != null ? d : "")
+                        .setParameter("id", rid)
+                        .executeUpdate();
+                return null;
+            });
         }
 
-        Instructor inst = em.createQuery(
-                        "SELECT i FROM Instructor i WHERE i.usuario.id = :uid", Instructor.class)
-                .setParameter("uid", uid)
-                .getResultStream().findFirst().orElse(null);
-        if (inst == null || r.getInstructor() == null || !inst.getId().equals(r.getInstructor().getId())) {
-            ra.addFlashAttribute("error", "No tienes permiso para eliminar esta rutina");
-            return "redirect:/instructor/rutinas";
+        if (detalleIds != null && !detalleIds.isEmpty()) {
+            int nRows = detalleIds.size();
+            for (int i = 0; i < nRows; i++) {
+                final int idx = i;
+                final Integer did = detalleIds.get(i);
+                final Integer ejId = (ejercicioIds != null && ejercicioIds.size() > i) ? ejercicioIds.get(i) : null;
+                final String dia = (dias != null && dias.size() > i) ? dias.get(i) : null;
+                final Integer s = (seriesList != null && seriesList.size() > i) ? seriesList.get(i) : null;
+                final Integer rVal = (repesList != null && repesList.size() > i) ? repesList.get(i) : null;
+
+                try {
+                    txTemplate.execute(status -> {
+                        if (did != null) {
+                            em.createNativeQuery("UPDATE rutina_detalle SET series = ?, repeticiones = ? WHERE id = ?")
+                                    .setParameter(1, s)
+                                    .setParameter(2, rVal)
+                                    .setParameter(3, did)
+                                    .executeUpdate();
+                        } else if (ejId != null && dia != null) {
+                            em.createNativeQuery("UPDATE rutina_detalle SET series = ?, repeticiones = ? WHERE id_rutina = ? AND id_ejercicio = ? AND dia_semana = ?")
+                                    .setParameter(1, s)
+                                    .setParameter(2, rVal)
+                                    .setParameter(3, rid)
+                                    .setParameter(4, ejId)
+                                    .setParameter(5, dia)
+                                    .executeUpdate();
+                        }
+                        return null;
+                    });
+                } catch (Exception ex) {
+                    logger.warn("fallo tx al actualizar detalle (fila {}): {}", idx, ex.getMessage(), ex);
+                }
+            }
         }
 
-        em.createNativeQuery("DELETE FROM rutina_detalle WHERE id_rutina = ?").setParameter(1, id).executeUpdate();
-        em.remove(em.contains(r) ? r : em.merge(r));
-        ra.addFlashAttribute("success", "Rutina eliminada");
         return "redirect:/instructor/rutinas";
+    }
+
+    private Detalle mapRowToDetalleFlexible(Object[] row, Integer rutinaId) {
+        Detalle d = new Detalle();
+        try {
+            if (row.length >= 5) {
+                if (row[0] instanceof Number && ((Number) row[0]).intValue() == rutinaId) {
+                    d.detalleId = null;
+                    d.ejercicioId = (row[1] instanceof Number) ? ((Number) row[1]).intValue() : null;
+                    d.diaSemana = row[2] != null ? row[2].toString() : "";
+                    d.series = (row[3] instanceof Number) ? ((Number) row[3]).intValue() : null;
+                    d.repeticiones = (row[4] instanceof Number) ? ((Number) row[4]).intValue() : null;
+                } else if (row[0] instanceof Number && row[1] instanceof Number) {
+                    d.detalleId = ((Number) row[0]).intValue();
+                    d.ejercicioId = ((Number) row[1]).intValue();
+                    d.diaSemana = row.length > 2 && row[2] != null ? row[2].toString() : "";
+                    d.series = row.length > 3 && row[3] instanceof Number ? ((Number) row[3]).intValue() : null;
+                    d.repeticiones = row.length > 4 && row[4] instanceof Number ? ((Number) row[4]).intValue() : null;
+                } else {
+                    Integer foundEj = null;
+                    for (Object col : row) {
+                        if (col instanceof Number) {
+                            Integer v = ((Number) col).intValue();
+                            if (v != null && v > 0 && !v.equals(rutinaId)) { foundEj = v; break; }
+                        }
+                    }
+                    d.ejercicioId = foundEj;
+                    d.diaSemana = row.length > 2 && row[2] != null ? row[2].toString() : "";
+                    d.series = row.length > 3 && row[3] instanceof Number ? ((Number) row[3]).intValue() : null;
+                    d.repeticiones = row.length > 4 && row[4] instanceof Number ? ((Number) row[4]).intValue() : null;
+                }
+            } else {
+                d.detalleId = null;
+                d.ejercicioId = null;
+                d.diaSemana = "";
+            }
+        } catch (Exception ignored) {
+            d.detalleId = null;
+            d.ejercicioId = null;
+            d.diaSemana = "";
+        }
+        if (d.ejercicioId != null) d.ejercicioNombre = tryFindEjercicioNombre(d.ejercicioId);
+        else d.ejercicioNombre = "Ejercicio";
+        return d;
+    }
+
+    private String tryFindEjercicioNombre(Integer id) {
+        if (id == null) return "Ejercicio";
+        try {
+            Ejercicio ej = em.find(Ejercicio.class, id);
+            if (ej != null && ej.getNombre() != null) return ej.getNombre();
+        } catch (Exception ignored) {}
+        return "Ejercicio";
+    }
+
+    public static class RutinaView {
+        public Rutina rutina;
+        public List<Detalle> detalles;
+        public String searchText;
+        public boolean editing = false;
+    }
+
+    public static class Detalle {
+        public Integer detalleId;
+        public Integer ejercicioId;
+        public String ejercicioNombre;
+        public String diaSemana;
+        public Integer series;
+        public Integer repeticiones;
+    }
+
+    private String toJsonArray(List<Map<String,Object>> list) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("[");
+        boolean first = true;
+        for (Map<String,Object> m : list) {
+            if (!first) sb.append(",");
+            first = false;
+            sb.append("{");
+            boolean firstField = true;
+            for (Map.Entry<String,Object> e : m.entrySet()) {
+                if (!firstField) sb.append(",");
+                firstField = false;
+                sb.append("\"").append(escapeJson(e.getKey())).append("\":");
+                Object v = e.getValue();
+                if (v == null) {
+                    sb.append("null");
+                } else if (v instanceof Number) {
+                    sb.append(v.toString());
+                } else {
+                    sb.append("\"").append(escapeJson(v.toString())).append("\"");
+                }
+            }
+            sb.append("}");
+        }
+        sb.append("]");
+        return sb.toString();
+    }
+
+    private String escapeJson(String s) {
+        if (s == null) return "";
+        return s.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "\\r");
     }
 }

@@ -1,81 +1,228 @@
-<!--/*@thymesVar name="rutinas" type="java.util.List<com.example.gym1.Poo.Rutina>" */-->
 <!DOCTYPE html>
 <html lang="es" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
-    <title>DEBUG Gym — Rutinas (Instructor)</title>
+    <title>Rutinas · Instructor</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
     <style>
-        :root{--bg:#0a0a0e;--ink:#f2f2f2;--muted:#b7b7c2;--accent:#ffc107;--card:#111118;--line:#1b1b25}
-        html,body{background:var(--bg);color:var(--ink)}
-        .cardx{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:1rem}
+        :root{--bg:#0a0a0e;--card:#111118;--line:#1b1b25;--ink:#f2f2f2;--muted:#b7b7c2;--accent:#ffc107}
+        html,body{background:var(--bg);color:var(--ink);margin:0;padding:0;font-family:Arial,Helvetica,sans-serif}
+        .containerx{max-width:1100px;margin:2rem auto;padding:0 1rem}
+        .navbar { background:#08080a; border-bottom:1px solid rgba(255,255,255,.03); }
+        .brand { font-weight:800; color:var(--accent); padding:.85rem 0; }
+        .cardx{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:1rem;margin-bottom:1rem}
         .muted{color:var(--muted)}
-        a{color:var(--accent)}
-        .btn-main{background:var(--accent);color:#111;padding:.45rem .8rem;border-radius:8px;border:none;font-weight:800}
-        table{width:100%;color:var(--ink)}
-        th,td{padding:.5rem .75rem}
+        .rutina-block{margin-bottom:1rem;padding:0;border-radius:10px;overflow:hidden}
+        .rutina-header{display:flex;justify-content:space-between;align-items:flex-start;padding:1rem;background:rgba(255,255,255,0.01)}
+        .rutina-body{padding:0 1rem 1rem 1rem}
+        .rutina-title{font-weight:700;font-size:1.05rem}
+        table.detalles{width:100%;border-collapse:collapse;margin-top:.5rem}
+        table.detalles th, table.detalles td{padding:.5rem .6rem;border-bottom:1px solid rgba(255,255,255,.02);text-align:left}
+        table.detalles thead th{color:var(--muted);font-weight:700;font-size:.9rem}
+        .actions { display:flex; gap:.5rem; align-items:center }
+        .small-btn{padding:.35rem .55rem;border-radius:6px;text-decoration:none}
+        .btn-edit{background:#485fc7;color:#fff;border:none}
+        .btn-delete{background:#ff6b81;color:#fff;border:none}
+        .btn-assign{background:#3aa0ff;color:#fff;border:none}
+        .note { color:var(--muted); font-size:.95rem; margin-top:.5rem; }
+        .search { width:100%;padding:.6rem;border-radius:8px;border:1px solid #262626;background:#0f0f14;color:#fff }
+        .form-inline { display:flex; gap:.5rem; flex-wrap:wrap; align-items:center; margin-top:.5rem }
+        input.small { padding:.4rem .6rem; border-radius:6px; background:#0f0f14; border:1px solid #262626; color:#fff }
+        input.num { width:90px; padding:.35rem .5rem; border-radius:6px; background:#0f0f14; border:1px solid #262626; color:#fff; }
+        .editable { border:1px dashed rgba(255,255,255,.03); padding:.35rem .5rem; border-radius:6px; background:transparent; color:var(--ink) }
     </style>
 </head>
 <body>
 <nav class="navbar">
-    <div class="container">
-        <div class="navbar-brand">
-            <a class="navbar-item brand" href="/instructor">DEBUG Gym · Instructor</a>
-        </div>
-        <div class="navbar-menu">
-            <div class="navbar-end">
-                <div class="navbar-item"><a class="button is-light" href="/instructor">Panel</a></div>
-            </div>
-        </div>
+    <div class="containerx" style="display:flex;align-items:center">
+        <div class="brand">DEBUG Gym · Instructor</div>
     </div>
 </nav>
 
-<section class="section">
-    <div class="container">
+<main>
+    <div class="containerx">
         <div class="cardx">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
-                <div>
-                    <div style="color:var(--accent);font-weight:800;letter-spacing:.08em;text-transform:uppercase;font-size:.8rem">Rutinas</div>
-                    <h2 class="title is-4">Rutinas</h2>
-                    <p class="muted">Crea y asigna rutinas a tus clientes.</p>
+            <h2 class="title is-4" style="margin:0;color:var(--ink)">Rutinas</h2>
+            <p class="muted" style="margin-top:.5rem">Tus rutinas: pulsa "Abrir" para ver ejercicios, series y repeticiones. Puedes buscar y administrar.</p>
+
+            <div style="margin-top:1rem; display:flex; gap:.5rem; align-items:center">
+                <input id="searchInput" class="search" placeholder="Buscar por rutina, descripción o ejercicio..." oninput="filterRutinas()" />
+                <a th:href="@{/instructor/rutinas/crear}" class="small-btn btn-assign" style="margin-left:auto">Crear rutina</a>
+            </div>
+        </div>
+
+        <div th:if="${#lists.isEmpty(rutinasViews)}" class="cardx muted">No hay rutinas registradas.</div>
+
+        <div th:each="rv : ${rutinasViews}" class="rutina-block cardx" th:attr="data-text=${rv.searchText}">
+            <div class="rutina-header">
+                <div style="max-width:78%;">
+                    <div>
+                        <span class="rutina-title" th:text="${rv.rutina.nombre}" th:attr="data-name=${rv.rutina.nombre}">Nombre rutina</span>
+                    </div>
+                    <div class="muted" th:text="${rv.rutina.descripcion}" th:attr="data-desc=${rv.rutina.descripcion}">Descripción</div>
                 </div>
-                <div>
-                    <a href="/instructor/rutinas/crear" class="btn-main">+ Nueva rutina</a>
+
+                <div class="actions">
+                    <button type="button" class="small-btn" onclick="toggleDetails(this)">Abrir</button>
+                    <button type="button" class="small-btn" onclick="toggleEdit(this)">Editar</button>
+                    <button type="submit" class="small-btn btn-edit" th:attr="form=|form-detalles-${rv.rutina.id}|">Guardar</button>
+
+                    <form th:action="@{|/instructor/rutinas/eliminar/${rv.rutina.id}|}" method="post" style="display:inline" onsubmit="return confirm('¿Eliminar rutina?');">
+                        <input type="hidden" th:if="${_csrf != null}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                        <button type="submit" class="small-btn btn-delete">Eliminar</button>
+                    </form>
                 </div>
             </div>
 
-            <div style="overflow-x:auto">
-                <table>
-                    <thead>
-                    <tr>
-                        <th>Nombre</th>
-                        <th>Cliente</th>
-                        <th>Descripción</th>
-                        <th style="width:160px">Acciones</th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    <tr th:each="r : ${rutinas}">
-                        <td th:text="${r.nombre}">Nombre</td>
-                        <td th:text="${r.cliente != null ? r.cliente.nombre : '—'}">Cliente</td>
-                        <td th:text="${r.descripcion}">Descripción</td>
-                        <td>
-                            <a class="button is-small is-link" th:href="@{|/instructor/rutinas/editar/${r.id}|}">Editar</a>
-                            <form th:action="@{|/instructor/rutinas/eliminar/${r.id}|}" method="post" style="display:inline" onsubmit="return confirm('¿Eliminar rutina?');">
-                                <button class="button is-small is-danger" type="submit">Eliminar</button>
-                            </form>
-                        </td>
-                    </tr>
-                    <tr th:if="${#lists.isEmpty(rutinas)}">
-                        <td colspan="4" class="muted">No hay rutinas aún.</td>
-                    </tr>
-                    </tbody>
-                </table>
-            </div>
+            <div class="rutina-body" style="display:none">
+                <form th:id="${'form-detalles-' + rv.rutina.id}" th:action="@{|/instructor/rutinas/${rv.rutina.id}/detalles/guardar|}" method="post">
+                    <input type="hidden" th:if="${_csrf != null}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                    <input type="hidden" name="nombre" th:value="${rv.rutina.nombre}"/>
+                    <input type="hidden" name="descripcion" th:value="${rv.rutina.descripcion}"/>
 
+                    <div th:if="${#lists.isEmpty(rv.detalles)}" class="note">No hay ejercicios asignados a esta rutina.</div>
+
+                    <table th:if="${!#lists.isEmpty(rv.detalles)}" class="detalles">
+                        <thead>
+                        <tr>
+                            <th>Ejercicio</th>
+                            <th>Día</th>
+                            <th>Series</th>
+                            <th>Repeticiones</th>
+                            <th></th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="d, iterStat : ${rv.detalles}">
+                            <td th:text="${d.ejercicioNombre}">Ejercicio</td>
+
+                            <td>
+                                <input type="hidden" name="ejercicioId" th:value="${d.ejercicioId}" />
+                                <input type="hidden" name="dia" th:value="${d.diaSemana}" />
+                                <span th:text="${d.diaSemana != '' ? d.diaSemana : '—'}">Lunes</span>
+                            </td>
+
+                            <td>
+                                <input type="hidden" name="detalleId" th:value="${d.detalleId}" />
+                                <input class="num" type="number" name="series" min="0" th:value="${d.series != null ? d.series : ''}" />
+                            </td>
+
+                            <td>
+                                <input class="num" type="number" name="repeticiones" min="0" th:value="${d.repeticiones != null ? d.repeticiones : ''}" />
+                            </td>
+
+                            <td>
+                                <div th:if="${d.detalleId != null}">
+                                    <form th:action="@{|/instructor/rutinas/${rv.rutina.id}/detalles/eliminar/${d.detalleId}|}" method="post" style="display:inline" onsubmit="return confirm('¿Eliminar ejercicio de la rutina?');">
+                                        <input type="hidden" th:if="${_csrf != null}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                                        <button class="small-btn btn-delete" type="submit">Eliminar</button>
+                                    </form>
+                                </div>
+                                <div th:if="${d.detalleId == null}">
+                                    <form th:action="@{|/instructor/rutinas/${rv.rutina.id}/detalles/eliminar|}" method="post" style="display:inline" onsubmit="return confirm('¿Eliminar ejercicio de la rutina?');">
+                                        <input type="hidden" th:if="${_csrf != null}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                                        <input type="hidden" name="ejercicioId" th:value="${d.ejercicioId}" />
+                                        <input type="hidden" name="diaSemana" th:value="${d.diaSemana}" />
+                                        <button class="small-btn btn-delete" type="submit">Eliminar</button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </form>
+
+                <div style="margin-top:0.75rem">
+                    <form th:action="@{|/instructor/rutinas/${rv.rutina.id}/detalles/agregar|}" method="post" class="form-inline">
+                        <input type="hidden" th:if="${_csrf != null}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                        <select name="ejercicioId" class="small" required>
+                            <option value="">-- Ejercicio --</option>
+                            <option th:each="e : ${ejercicios}" th:value="${e.id}" th:text="${e.nombre}">Ejercicio</option>
+                        </select>
+
+                        <input type="text" name="diaSemana" class="small" placeholder="Día (lunes, martes...)" />
+                        <input type="number" name="series" class="small" placeholder="Series" min="1" />
+                        <input type="number" name="repeticiones" class="small" placeholder="Repeticiones" min="1" />
+
+                        <button type="submit" class="small-btn btn-assign">Agregar</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div style="margin-top:.75rem">
+            <a th:href="@{/instructor}" class="muted">Volver</a>
         </div>
     </div>
-</section>
+</main>
+
+<script>
+    function toggleDetails(btn) {
+        const header = btn.closest('.rutina-header');
+        const block = header.nextElementSibling;
+        if (!block) return;
+        block.style.display = (block.style.display === 'none' || block.style.display === '') ? 'block' : 'none';
+        btn.textContent = (block.style.display === 'block') ? 'Cerrar' : 'Abrir';
+    }
+
+    function toggleEdit(btn) {
+        const header = btn.closest('.rutina-header');
+        const titleSpan = header.querySelector('.rutina-title');
+        const descSpan = header.querySelector('.muted');
+        const body = header.nextElementSibling;
+        if (!body) return;
+        const form = body.querySelector('form');
+        if (!form) return;
+        const hiddenNombre = form.querySelector('input[name="nombre"]');
+        const hiddenDescripcion = form.querySelector('input[name="descripcion"]');
+        if (header.dataset.editing === '1') {
+            const inputNombre = header.querySelector('input[name="nombre_tmp"]');
+            const textareaDesc = header.querySelector('textarea[name="descripcion_tmp"]');
+            if (inputNombre) {
+                const v = inputNombre.value;
+                titleSpan.textContent = v;
+                if (hiddenNombre) hiddenNombre.value = v;
+                inputNombre.remove();
+            }
+            if (textareaDesc) {
+                const v = textareaDesc.value;
+                descSpan.textContent = v;
+                if (hiddenDescripcion) hiddenDescripcion.value = v;
+                textareaDesc.remove();
+            }
+            header.dataset.editing = '0';
+            btn.textContent = 'Editar';
+        } else {
+            const currentName = titleSpan.getAttribute('data-name') || titleSpan.textContent;
+            const currentDesc = descSpan.getAttribute('data-desc') || descSpan.textContent;
+            const inputNombre = document.createElement('input');
+            inputNombre.name = 'nombre_tmp';
+            inputNombre.className = 'editable';
+            inputNombre.value = currentName;
+            titleSpan.parentNode.insertBefore(inputNombre, titleSpan.nextSibling);
+            const textarea = document.createElement('textarea');
+            textarea.name = 'descripcion_tmp';
+            textarea.className = 'editable';
+            textarea.rows = 2;
+            textarea.textContent = currentDesc === '—' ? '' : currentDesc;
+            descSpan.parentNode.insertBefore(textarea, descSpan.nextSibling);
+            if (hiddenNombre) hiddenNombre.value = inputNombre.value;
+            if (hiddenDescripcion) hiddenDescripcion.value = textarea.value;
+            inputNombre.addEventListener('input', function(){ if (hiddenNombre) hiddenNombre.value = this.value; });
+            textarea.addEventListener('input', function(){ if (hiddenDescripcion) hiddenDescripcion.value = this.value; });
+            header.dataset.editing = '1';
+            btn.textContent = 'Cancelar';
+        }
+    }
+
+    function filterRutinas() {
+        const q = (document.getElementById('searchInput').value || '').toLowerCase().trim();
+        document.querySelectorAll('.rutina-block').forEach(function(node) {
+            const text = (node.getAttribute('data-text') || '').toLowerCase();
+            node.style.display = text.indexOf(q) !== -1 ? '' : 'none';
+        });
+    }
+</script>
 </body>
 </html>

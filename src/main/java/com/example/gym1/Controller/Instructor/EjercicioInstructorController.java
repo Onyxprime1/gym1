@@ -1,63 +1,76 @@
 package com.example.gym1.Controller.Instructor;
 
 import com.example.gym1.Poo.Ejercicio;
-import com.example.gym1.Controller.Instructor.EjercicioRepository;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import jakarta.transaction.Transactional;
+import jakarta.servlet.http.HttpSession;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.util.List;
-import java.util.Locale;
-import java.util.stream.Collectors;
 
+/**
+ * Controlador para gestionar ejercicios (listar, crear, editar, eliminar).
+ * Eliminar ahora limpia referencias en rutina_detalle antes de borrar el ejercicio
+ * para evitar violaciones de FK con rutinas antiguas.
+ */
 @Controller
 @RequestMapping("/instructor/ejercicios")
 public class EjercicioInstructorController {
 
-    private final EjercicioRepository ejercicioRepository;
-
-    public EjercicioInstructorController(EjercicioRepository ejercicioRepository) {
-        this.ejercicioRepository = ejercicioRepository;
-    }
-
-    /**
-     * Garantiza que la plantilla siempre tenga un atributo "ejercicio" para el binding.
-     * Evita el error: "Neither BindingResult nor plain target object for bean name 'ejercicio' available".
-     */
-    @ModelAttribute("ejercicio")
-    public Ejercicio ejercicioModel() {
-        return new Ejercicio();
-    }
+    @PersistenceContext
+    private EntityManager em;
 
     @GetMapping
-    public String listar(@RequestParam(value = "q", required = false) String q, Model model) {
-        List<Ejercicio> lista = ejercicioRepository.findAll();
-        if (q != null && !q.isBlank()) {
-            String qLower = q.toLowerCase(Locale.ROOT);
-            lista = lista.stream()
-                    .filter(e ->
-                            (e.getNombre() != null && e.getNombre().toLowerCase(Locale.ROOT).contains(qLower)) ||
-                                    (e.getDescripcion() != null && e.getDescripcion().toLowerCase(Locale.ROOT).contains(qLower)) ||
-                                    (e.getMusculo() != null && e.getMusculo().toLowerCase(Locale.ROOT).contains(qLower))
-                    )
-                    .collect(Collectors.toList());
-        }
-        model.addAttribute("ejercicios", lista);
-        model.addAttribute("q", q);
+    public String listar(HttpSession session, Model model) {
+        Integer uid = (Integer) session.getAttribute("uid");
+        if (uid == null) return "redirect:/login";
+
+        List<Ejercicio> ejercicios = em.createQuery("SELECT e FROM Ejercicio e ORDER BY e.nombre", Ejercicio.class)
+                .getResultList();
+
+        model.addAttribute("ejercicios", ejercicios);
         return "instructor/ejercicios";
     }
 
     @GetMapping("/nuevo")
-    public String nuevoForm(Model model) {
-        // @ModelAttribute("ejercicio") ya provee la instancia; aquí la sobreescribimos explícitamente por claridad
+    public String nuevo(HttpSession session, Model model) {
+        Integer uid = (Integer) session.getAttribute("uid");
+        if (uid == null) return "redirect:/login";
+
         model.addAttribute("ejercicio", new Ejercicio());
         return "instructor/ejercicio-form";
     }
 
+    @PostMapping("/guardar")
+    @Transactional
+    public String guardar(@ModelAttribute Ejercicio ejercicio, HttpSession session, RedirectAttributes ra) {
+        Integer uid = (Integer) session.getAttribute("uid");
+        if (uid == null) return "redirect:/login";
+
+        try {
+            if (ejercicio.getId() == null) {
+                em.persist(ejercicio);
+            } else {
+                em.merge(ejercicio);
+            }
+            ra.addFlashAttribute("success", "Ejercicio guardado correctamente.");
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            ra.addFlashAttribute("error", "Error guardando ejercicio: " + ex.getMessage());
+        }
+        return "redirect:/instructor/ejercicios";
+    }
+
     @GetMapping("/editar/{id}")
-    public String editarForm(@PathVariable Integer id, Model model, RedirectAttributes ra) {
-        Ejercicio e = ejercicioRepository.findById(id).orElse(null);
+    public String editar(@PathVariable Integer id, HttpSession session, Model model, RedirectAttributes ra) {
+        Integer uid = (Integer) session.getAttribute("uid");
+        if (uid == null) return "redirect:/login";
+
+        Ejercicio e = em.find(Ejercicio.class, id);
         if (e == null) {
             ra.addFlashAttribute("error", "Ejercicio no encontrado");
             return "redirect:/instructor/ejercicios";
@@ -66,17 +79,52 @@ public class EjercicioInstructorController {
         return "instructor/ejercicio-form";
     }
 
-    @PostMapping("/guardar")
-    public String guardar(@ModelAttribute Ejercicio ejercicio, RedirectAttributes ra) {
-        ejercicioRepository.save(ejercicio);
-        ra.addFlashAttribute("success", "Ejercicio guardado correctamente");
-        return "redirect:/instructor/ejercicios";
-    }
-
+    /**
+     * Eliminar ejercicio: limpieza de referencias antigua y eliminación.
+     * - Borra filas en rutina_detalle que referencien el ejercicio,
+     * - Luego elimina la entidad ejercicio de la tabla ejercicios.
+     * Esto evita el error de FK que veías al intentar borrar ejercicios usados en rutinas antiguas.
+     */
     @PostMapping("/eliminar/{id}")
-    public String eliminar(@PathVariable Integer id, RedirectAttributes ra) {
-        ejercicioRepository.deleteById(id);
-        ra.addFlashAttribute("success", "Ejercicio eliminado");
+    @Transactional
+    public String eliminar(@PathVariable Integer id, HttpSession session, RedirectAttributes ra) {
+        Integer uid = (Integer) session.getAttribute("uid");
+        if (uid == null) return "redirect:/login";
+
+        try {
+            // 1) comprobar cuántas referencias hay (opcional información)
+            Number refsN = (Number) em.createNativeQuery("SELECT COUNT(1) FROM rutina_detalle WHERE id_ejercicio = ?")
+                    .setParameter(1, id)
+                    .getSingleResult();
+            int refs = refsN != null ? refsN.intValue() : 0;
+
+            // 2) borrar referencias en rutina_detalle (si existen)
+            if (refs > 0) {
+                em.createNativeQuery("DELETE FROM rutina_detalle WHERE id_ejercicio = ?")
+                        .setParameter(1, id)
+                        .executeUpdate();
+            }
+
+            // 3) borrar el ejercicio
+            Ejercicio ejercicio = em.find(Ejercicio.class, id);
+            if (ejercicio == null) {
+                ra.addFlashAttribute("error", "Ejercicio no encontrado");
+                return "redirect:/instructor/ejercicios";
+            }
+            em.remove(em.contains(ejercicio) ? ejercicio : em.merge(ejercicio));
+
+            // 4) feedback al usuario
+            if (refs > 0) {
+                ra.addFlashAttribute("success", "Ejercicio eliminado y " + refs + " referencia(s) en rutinas fueron limpiadas.");
+            } else {
+                ra.addFlashAttribute("success", "Ejercicio eliminado correctamente.");
+            }
+
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            ra.addFlashAttribute("error", "Error al eliminar ejercicio: " + ex.getMessage());
+        }
+
         return "redirect:/instructor/ejercicios";
     }
 }

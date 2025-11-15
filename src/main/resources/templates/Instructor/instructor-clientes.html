@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width,initial-scale=1"/>
+    <title>Clientes · Instructor</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+    <style>
+        :root{--bg:#0a0a0e;--ink:#f2f2f2;--muted:#b7b7c2;--card:#111118;--line:#1b1b25;--accent:#ffc107}
+        html,body{background:var(--bg);color:var(--ink);margin:0;padding:0;font-family:Arial,Helvetica,sans-serif}
+        .containerx{max-width:1100px;margin:0 auto;padding:2rem}
+        .cardx{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:1rem}
+        table{width:100%;border-collapse:collapse}
+        th,td{padding:.6rem .8rem}
+        thead th{color:var(--muted);font-weight:700}
+        a.button.is-small { padding:.35rem .6rem }
+    </style>
+</head>
+<body>
+<nav style="background:#08080a;padding:.5rem 1rem;border-bottom:1px solid rgba(255,255,255,.03)">
+    <div class="containerx" style="display:flex;justify-content:space-between;align-items:center">
+        <div style="font-weight:800;color:var(--accent)">DEBUG Gym · Instructor</div>
+        <div th:text="${nombre}">Instructor</div>
+    </div>
+</nav>
+
+<div class="containerx">
+    <div class="cardx" style="margin-bottom:1rem">
+        <h2 class="title is-4" style="margin:0">Clientes</h2>
+        <p class="muted">Lista de clientes. Haz clic en Ver para asignar/editar/eliminar rutinas.</p>
+    </div>
+
+    <div class="cardx">
+        <table>
+            <thead><tr><th>Nombre</th><th>Membresía</th><th style="width:160px">Acciones</th></tr></thead>
+            <tbody>
+            <tr th:each="row : ${clientesRows}">
+                <td th:text="${row.cliente.nombre}">Nombre</td>
+                <td th:text="${row.membresia}">Membresía</td>
+                <td>
+                    <a th:href="@{|/instructor/clientes/${row.cliente.id}|}" class="button is-small is-light">Ver / Asignar</a>
+                </td>
+            </tr>
+            <tr th:if="${#lists.isEmpty(clientesRows)}"><td colspan="3" class="muted">No hay clientes.</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+</body>
+</html>

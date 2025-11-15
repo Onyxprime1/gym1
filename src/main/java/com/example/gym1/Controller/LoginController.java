@@ -39,20 +39,22 @@ public class LoginController {
 
             // Guardamos el ID del rol y el nombre, para usarlo después
             if (u.getRol() != null) {
-                session.setAttribute("rolId", u.getRol().getId());       // ej: 1 = admin, 4 = cliente, etc.
-                session.setAttribute("rolNombre", u.getRol().getNombre()); // opcional
+                session.setAttribute("rolId", u.getRol().getId());
+                session.setAttribute("rolNombre", u.getRol().getNombre());
             }
 
             // Redirigir según rol:
-            String rolNombre = u.getRol() != null && u.getRol().getNombre() != null
-                    ? u.getRol().getNombre().toLowerCase()
+            String rolNombre = (u.getRol() != null && u.getRol().getNombre() != null)
+                    ? u.getRol().getNombre().trim().toLowerCase()
                     : "";
 
-            if (rolNombre.contains("instructor")) {
-                return "redirect:/instructor/ejercicios";
-            } else if (rolNombre.contains("admin") || rolNombre.contains("administrador")) {
+            // Preferible: usar rolNombre o rolId según cómo gestiones roles en la BD
+            if (rolNombre.contains("instructor") || Integer.valueOf( u.getRol()!=null ? u.getRol().getId() : 0 ).equals( /* opcional: id del rol instructor */ 2 )) {
+                // Redirige al mapping /instructor que ya atiende InstructorInicioController
+                return "redirect:/instructor";
+            } else if (rolNombre.contains("admin") || rolNombre.contains("administrador") || (u.getRol()!=null && u.getRol().getId()!=null && u.getRol().getId() == 1)) {
                 return "redirect:/admin";
-            } else if (rolNombre.contains("nutriologo")) {   // NUEVO
+            } else if (rolNombre.contains("nutriologo") || rolNombre.contains("nutriólogo")) {
                 return "redirect:/nutriologo/panel";
             } else {
                 return "redirect:/inicio";

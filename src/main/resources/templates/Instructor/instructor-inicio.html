@@ -1,162 +1,102 @@
 <!--/*@thymesVar name="nombre" type="java.lang.String" */-->
 <!--/*@thymesVar name="ejerciciosCount" type="java.lang.Integer" */-->
 <!--/*@thymesVar name="rutinasCount" type="java.lang.Integer" */-->
-<!--/*@thymesVar name="recentEjercicios" type="java.util.List<com.example.gym1.Poo.Ejercicio>" */-->
-<!--/*@thymesVar name="recentRutinas" type="java.util.List<com.example.gym1.Poo.Rutina>" */-->
-<!--/*@thymesVar name="clientes" type="java.util.List<com.example.gym1.Poo.Cliente>" */-->
-<!--/*@thymesVar name="clientRutinasList" type="java.util.List<com.example.gym1.Controller.Instructor.InstructorInicioController.ClientRutinas>" */-->
-<!--/*@thymesVar name="plantillaRutinas" type="java.util.List<com.example.gym1.Poo.Rutina>" */-->
+<!--/*@thymesVar name="clientesCount" type="java.lang.Integer" */-->
 <!DOCTYPE html>
 <html lang="es" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
-    <title>DEBUG Gym · Panel Instructor</title>
+    <title>DEBUG Gym · Instructor</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
     <style>
-        :root{--bg:#0a0a0e;--ink:#f2f2f2;--muted:#b7b7c2;--accent:#ffc107;--card:#111118;--line:#1b1b25}
-        html,body{background:var(--bg);color:var(--ink)}
-        .cardx{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:1rem}
+        :root{
+            --bg:#0a0a0e;
+            --ink:#f2f2f2;
+            --muted:#b7b7c2;
+            --accent:#ffc107;
+            --card:#111118;
+            --line:#1b1b25;
+        }
+        html,body{background:var(--bg);color:var(--ink);font-family:Arial,Helvetica,sans-serif;margin:0;padding:0;}
+        .containerx{max-width:1200px;margin:0 auto;padding:2rem}
+        /* NAVBAR: forcer brand left and logout right */
+        .navbar {
+            background:#08080a;
+            border-bottom:1px solid rgba(255,255,255,.03);
+        }
+        .navbar .containerx { display:flex; align-items:center; gap:1rem; }
+        .navbar .brand { font-weight:800; color:var(--accent); }
+        .navbar .nav-actions { margin-left:auto; display:flex; align-items:center; gap:.5rem; }
+        /* Hero and cards */
+        .hero-card{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); border-radius:14px;padding:2rem;margin-bottom:1.25rem;border:1px solid rgba(255,255,255,0.03)}
+        .panel-card{background:var(--card);border-radius:12px;padding:1.25rem;border:1px solid var(--line);margin-bottom:1rem}
+        .btn-main{background:var(--accent);color:#111;padding:.6rem 1rem;border-radius:8px;border:none;font-weight:800}
         .muted{color:var(--muted)}
-        .btn-main{background:var(--accent);color:#111;padding:.45rem .8rem;border-radius:8px;border:none;font-weight:800}
-        .client-card{background:#0f0f14;padding:1rem;border-radius:10px;margin-bottom:.75rem}
-        .rutina-row{display:flex;align-items:center;justify-content:space-between;gap:.5rem;padding:.35rem 0;border-bottom:1px solid rgba(255,255,255,.03)}
-        .small-btn{padding:.25rem .5rem;font-size:.8rem;border-radius:6px}
+        a{color:var(--accent)}
+        .cards-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1rem;margin-top:1rem}
+        .stat-number{font-weight:900;font-size:1.6rem;margin-top:.35rem}
+        .card-link{margin-top:.6rem;display:inline-block}
+        /* Small responsive tweaks */
+        @media (max-width:720px){
+            .hero-card { padding:1.25rem; }
+            .navbar .containerx { flex-direction:row; }
+        }
     </style>
 </head>
 <body>
 <nav class="navbar">
-    <div class="container">
-        <div class="navbar-brand"><a class="navbar-item brand" href="/instructor">DEBUG Gym · Instructor</a></div>
-        <div class="navbar-menu"><div class="navbar-end"><div class="navbar-item"><a class="button is-light" href="/logout">Cerrar sesión</a></div></div></div>
+    <div class="containerx">
+        <div class="brand">DEBUG Gym · Instructor</div>
+        <div class="nav-actions">
+            <a class="button is-light" href="/logout">Cerrar sesión</a>
+        </div>
     </div>
 </nav>
 
-<section class="section">
-    <div class="container">
-        <div class="cardx">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
-                <div>
-                    <h1 class="title is-4">Bienvenido, <span th:text="${nombre}">Instructor</span></h1>
-                    <p class="muted">Panel rápido para gestionar ejercicios y rutinas.</p>
-                </div>
-                <div>
-                    <a href="/instructor/ejercicios/nuevo" class="btn-main">+ Nuevo ejercicio</a>
-                    <a th:href="@{/instructor/rutinas/crear}" class="button is-light" style="margin-left:.5rem">+ Nueva rutina</a>
-                </div>
+<div class="containerx">
+    <!-- Hero -->
+    <div class="hero-card">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap">
+            <div style="min-width:220px">
+                <div style="font-size:.85rem;font-weight:800;color:#d0d0d0">PANEL DE INSTRUCTOR</div>
+                <h1 style="font-size:2.25rem;margin:0.35rem 0;color:#e6e6e6">Bienvenido, <span th:text="${nombre}">Instructor</span></h1>
+                <p class="muted">Desde aquí gestiona ejercicios, rutinas y asignaciones a tus clientes.</p>
             </div>
 
-            <div class="stats" style="margin-bottom:1rem">
-                <div class="stat" style="min-width:220px">
-                    <div style="font-weight:800;font-size:0.9rem">Ejercicios</div>
-                    <div style="font-size:1.6rem;font-weight:900" th:text="${ejerciciosCount}">0</div>
-                    <div class="muted">Total de ejercicios</div>
-                </div>
-                <div class="stat" style="min-width:220px">
-                    <div style="font-weight:800;font-size:0.9rem">Rutinas</div>
-                    <div style="font-size:1.6rem;font-weight:900" th:text="${rutinasCount}">0</div>
-                    <div class="muted">Rutinas asignadas por ti</div>
-                </div>
+            <!-- BOTONES: a la derecha del hero -->
+            <div style="display:flex;gap:.6rem;align-items:center">
+                <a th:href="@{/instructor/ejercicios/nuevo}" class="btn-main">+ Nuevo ejercicio</a>
+                <a th:href="@{/instructor/rutinas/crear}" class="button is-light">+ Nueva rutina</a>
+                <!-- Quité el botón "Clientes" del header (lo pongo en las tarjetas) -->
             </div>
-
-            <!-- NEW: Card por clientes con sus rutinas -->
-            <h3 class="title is-5" style="margin-bottom:.5rem">Clientes y sus rutinas</h3>
-            <div>
-                <div th:each="cr,iterStat : ${clientRutinasList}" class="client-card">
-                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem">
-                        <div>
-                            <strong th:text="${cr.cliente.nombre}">Nombre Cliente</strong>
-                            <!-- CORRECCIÓN: mostrar nombre (o cualquier propiedad que exista).
-                                 Evitamos acceder a cr.cliente.email que no existe en la entidad Cliente -->
-                            <div class="muted" th:text="${cr.cliente.nombre}"></div>
-                        </div>
-                        <div style="display:flex;gap:.5rem;align-items:center">
-                            <!-- Crear rutina directamente para este cliente (si quieres crear y auto-asignar) -->
-                            <a th:href="@{|/instructor/rutinas/crear?clienteId=${cr.cliente.id}|}" class="button is-small" title="Crear rutina y asignar al cliente">+ Crear</a>
-
-                            <!-- Form para asignar una plantilla existente al cliente -->
-                            <form th:id="'assignForm' + ${iterStat.index}" method="post" th:action="@{/}" style="display:flex;gap:.35rem;align-items:center;margin:0">
-                                <div class="select">
-                                    <select th:id="'plantillaSelect' + ${iterStat.index}" name="plantillaRutinaId">
-                                        <option value="">Asignar plantilla...</option>
-                                        <option th:each="p : ${plantillaRutinas}" th:value="${p.id}" th:text="${p.nombre}"></option>
-                                    </select>
-                                </div>
-                                <input type="hidden" name="clienteId" th:value="${cr.cliente.id}"/>
-                                <button type="button" class="button is-small is-info" th:onclick="'submitAssign(' + ${iterStat.index} + ')'" title="Asignar plantilla seleccionada">Asignar</button>
-                            </form>
-                        </div>
-                    </div>
-
-                    <div th:if="${#lists.isEmpty(cr.rutinas)}" class="muted">No hay rutinas asignadas a este cliente.</div>
-
-                    <div th:each="r : ${cr.rutinas}">
-                        <div class="rutina-row">
-                            <div>
-                                <div style="font-weight:700" th:text="${r.nombre}">Nombre rutina</div>
-                                <div class="muted" th:text="${r.descripcion}">Descripción breve</div>
-                            </div>
-                            <div style="display:flex;gap:.35rem;align-items:center">
-                                <a th:href="@{|/instructor/rutinas/editar/${r.id}|}" class="button small-btn is-link">Editar</a>
-                                <form th:action="@{|/instructor/rutinas/eliminar/${r.id}|}" method="post" style="display:inline" onsubmit="return confirm('¿Eliminar rutina?');">
-                                    <button class="button small-btn is-danger" type="submit">Eliminar</button>
-                                </form>
-                                <a th:href="@{|/instructor/rutinas/asignar/${r.id}|}" class="button small-btn is-info" title="Asignar copia a otro cliente">Asignar copia</a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Sidebar: últimas rutinas y ejercicios (resumen) -->
-            <div style="display:flex;gap:1rem;margin-top:1rem">
-                <div style="flex:1">
-                    <h4 class="title is-6">Últimos ejercicios</h4>
-                    <div>
-                        <ul>
-                            <li th:each="e : ${recentEjercicios}" class="muted" th:text="${e.nombre}">Ejercicio</li>
-                            <li th:if="${#lists.isEmpty(recentEjercicios)}" class="muted">No hay ejercicios recientes.</li>
-                        </ul>
-                    </div>
-                </div>
-
-                <div style="width:380px">
-                    <h4 class="title is-6">Tus rutinas recientes</h4>
-                    <div>
-                        <ul>
-                            <li th:each="r : ${recentRutinas}">
-                                <span th:text="${r.nombre}">Rutina</span>
-                                <a th:href="@{|/instructor/rutinas/editar/${r.id}|}" style="margin-left:.5rem">Editar</a>
-                                <a th:href="@{|/instructor/rutinas/asignar/${r.id}|}" style="margin-left:.5rem">Asignar</a>
-                            </li>
-                            <li th:if="${#lists.isEmpty(recentRutinas)}" class="muted">No hay rutinas recientes.</li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-
         </div>
     </div>
-</section>
 
-<script>
-    // Envía el form hacia /instructor/rutinas/asignar/{rutinaId} con clienteId incluido
-    function submitAssign(index) {
-        var select = document.getElementById('plantillaSelect' + index);
-        if (!select) return;
-        var rutinaId = select.value;
-        if (!rutinaId) {
-            alert('Selecciona una plantilla de rutina para asignar.');
-            return;
-        }
-        var form = document.getElementById('assignForm' + index);
-        var clienteIdInput = form.querySelector('input[name="clienteId"]');
-        var clienteId = clienteIdInput ? clienteIdInput.value : null;
+    <!-- TARJETAS: Ejercicios | Rutinas | Clientes (estilo idéntico) -->
+    <div class="cards-grid">
+        <div class="panel-card">
+            <div style="font-weight:800;font-size:.9rem">Ejercicios</div>
+            <div class="stat-number" th:text="${ejerciciosCount}">0</div>
+            <div class="muted">Total de ejercicios</div>
+            <a class="card-link" th:href="@{/instructor/ejercicios}">Ver todos</a>
+        </div>
 
-        form.action = '/instructor/rutinas/asignar/' + encodeURIComponent(rutinaId);
-        form.method = 'post';
-        form.submit();
-    }
-</script>
+        <div class="panel-card">
+            <div style="font-weight:800;font-size:.9rem">Rutinas</div>
+            <div class="stat-number" th:text="${rutinasCount}">0</div>
+            <div class="muted">Rutinas asignadas por ti</div>
+            <a class="card-link" th:href="@{/instructor/rutinas}">Ver rutinas</a>
+        </div>
+
+        <div class="panel-card">
+            <div style="font-weight:800;font-size:.9rem">Clientes</div>
+            <div class="stat-number" th:text="${clientesCount}">0</div>
+            <div class="muted">Clientes registrados</div>
+            <!-- Al pulsar Ver clientes se abre la vista que lista clientes y permite asignar/editar/eliminar rutinas -->
+            <a class="card-link" th:href="@{/instructor/clientes}">Ver clientes</a>
+        </div>
+    </div>
+</div>
 </body>
 </html>

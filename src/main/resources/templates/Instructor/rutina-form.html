@@ -51,11 +51,8 @@
                     <div class="control"><textarea class="textarea" th:field="*{descripcion}" rows="3"></textarea></div>
                 </div>
 
-                <!-- NOTE: se quita selección/assignación de cliente aquí según lo pedido -->
-
                 <hr/>
 
-                <!-- FILTROS: búsqueda por nombre y filtro por músculo -->
                 <div style="display:flex;gap:.5rem;align-items:center;margin-bottom:.5rem">
                     <input id="searchInput" type="search" placeholder="Buscar por nombre..." class="input" style="flex:1" />
                     <div class="select" style="min-width:180px">
@@ -67,9 +64,8 @@
                     <button type="button" id="btnClearFilters" class="button is-light">Limpiar</button>
                 </div>
 
-                <div class="muted">Marca los ejercicios que pertenecerán a la rutina y define serie, repeticiones y día.</div>
+                <div class="muted">Marca los ejercicios que pertenecerán a la rutina y define series, repeticiones y día.</div>
 
-                <!-- Lista completa de ejercicios con checkbox (filtrable) -->
                 <div id="exercises-list">
                     <label th:each="e : ${ejercicios}" class="exercise-label">
                         <input type="checkbox" class="exercise-checkbox" th:attr="data-eid=${e.id},data-nombre=${e.nombre},data-musculo=${e.musculo}"
@@ -78,13 +74,10 @@
                     </label>
                 </div>
 
-                <!-- Contenedor donde JS añadirá los inputs reales que se enviarán -->
                 <div id="selected-exercises" style="display:flex;flex-direction:column;gap:.5rem;margin-bottom:1rem"></div>
 
-                <!-- Inyectamos JSON seguro para el JS (detallesJson viene del controlador) -->
                 <span id="existing-details-json" style="display:none" th:utext="${detallesJson}">[]</span>
 
-                <!-- Añadir ejercicio mediante select (útil) -->
                 <div style="display:flex;gap:.5rem;align-items:center;margin-bottom:1rem">
                     <select id="all-exercises-select" style="min-width:280px">
                         <option value="">-- Seleccionar ejercicio --</option>
@@ -104,8 +97,6 @@
 </section>
 
 <script>
-    // Gestiona selección dinámica de ejercicios: añade inputs ocultos en #selected-exercises
-    // También inicializa desde existing-details-json si viene (editar)
     const selectedContainer = document.getElementById('selected-exercises');
     const exercisesList = document.getElementById('exercises-list');
     const searchInput = document.getElementById('searchInput');
@@ -113,8 +104,7 @@
     const btnClear = document.getElementById('btnClearFilters');
     const allSelect = document.getElementById('all-exercises-select');
 
-    function createSelectedRow(id, nombre, musculo, serie = '', rep = '', dia = '') {
-        // si ya existe input hidden para ese id, no duplicar
+    function createSelectedRow(id, nombre, musculo, series = '', repeticiones = '', dia = '') {
         if (selectedContainer.querySelector('input[name="ejercicioId"][value="' + id + '"]')) return;
         const wrapper = document.createElement('div');
         wrapper.className = 'detalle-row selected-row';
@@ -122,8 +112,8 @@
         wrapper.innerHTML = '' +
             '<input type="hidden" name="ejercicioId" value="' + id + '"/>' +
             '<div style="flex:1"><strong>' + escapeHtml(nombre) + '</strong><div class="muted" style="font-size:.85rem">' + escapeHtml(musculo || '') + '</div></div>' +
-            '<input class="small-input input" name="serie" placeholder="Series" value="' + (serie !== null ? serie : '') + '"/>' +
-            '<input class="small-input input" name="repeticiones" placeholder="Reps" value="' + (rep !== null ? rep : '') + '"/>' +
+            '<input class="small-input input" name="series" placeholder="Series" value="' + (series !== null ? series : '') + '"/>' +
+            '<input class="small-input input" name="repeticiones" placeholder="Reps" value="' + (repeticiones !== null ? repeticiones : '') + '"/>' +
             '<input class="day-input input" name="dia" placeholder="Día" value="' + (dia !== null ? dia : '') + '"/>' +
             '<button type="button" class="button is-danger" style="margin-left:.35rem" onclick="removeSelected(' + id + ')">X</button>';
         selectedContainer.appendChild(wrapper);
@@ -132,17 +122,14 @@
     function removeSelected(id) {
         const wrapper = selectedContainer.querySelector('.selected-row[data-eid="' + id + '"]');
         if (wrapper) wrapper.remove();
-        // Uncheck checkbox if present
         const chk = exercisesList.querySelector('.exercise-checkbox[value="' + id + '"]');
         if (chk) chk.checked = false;
     }
 
-    // escape básico
     function escapeHtml(s) {
         return (s || '').toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
     }
 
-    // al marcar checkbox añadir fila
     exercisesList.addEventListener('change', function (e) {
         const cb = e.target;
         if (!cb.classList.contains('exercise-checkbox')) return;
@@ -156,7 +143,6 @@
         }
     });
 
-    // Añadir por select
     document.getElementById('btn-add-exercise').addEventListener('click', function () {
         const id = allSelect.value;
         if (!id) return alert('Selecciona un ejercicio');
@@ -164,12 +150,10 @@
         const text = opt.text;
         const [namePart, musPart] = text.split(' — ');
         createSelectedRow(id, namePart || text, musPart || '');
-        // marcar checkbox si visible
         const cb = exercisesList.querySelector('.exercise-checkbox[value="' + id + '"]');
         if (cb) cb.checked = true;
     });
 
-    // Inicializar detalles existentes (editar)
     (function initFromJson() {
         try {
             const raw = document.getElementById('existing-details-json').innerText || '[]';
@@ -177,7 +161,6 @@
             if (Array.isArray(arr)) {
                 arr.forEach(function (d) {
                     if (d && d.id) createSelectedRow(d.id, d.nombre || '', d.musculo || '', d.serie || '', d.repeticiones || '', d.dia || '');
-                    // marcar checkbox si existe
                     const cb = exercisesList.querySelector('.exercise-checkbox[value="' + d.id + '"]');
                     if (cb) cb.checked = true;
                 });
@@ -187,22 +170,16 @@
         }
     })();
 
-    // Filtrado en tiempo real
     function filterExercises() {
         const q = (searchInput.value || '').trim().toLowerCase();
         const muscle = (muscleFilter.value || '').trim().toLowerCase();
-
         const labels = exercisesList.querySelectorAll('.exercise-label');
         labels.forEach(function (lbl) {
             const name = (lbl.querySelector('span')?.innerText || '').toLowerCase();
             const mus = ((lbl.querySelector('.exercise-checkbox')?.dataset.musculo) || '').toLowerCase();
             const matchName = q === '' || name.indexOf(q) !== -1;
             const matchMus = muscle === '' || mus === muscle;
-            if (matchName && matchMus) {
-                lbl.classList.remove('hidden');
-            } else {
-                lbl.classList.add('hidden');
-            }
+            if (matchName && matchMus) lbl.classList.remove('hidden'); else lbl.classList.add('hidden');
         });
     }
 
@@ -214,9 +191,7 @@
         filterExercises();
     });
 
-    // Ejecutar filtro inicial
     filterExercises();
-
 </script>
 </body>
 </html>
