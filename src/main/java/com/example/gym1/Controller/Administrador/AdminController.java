@@ -59,7 +59,6 @@ public class AdminController {
         return "Administrador/membresias";
     }
 
-    @GetMapping("/admin/reportes")
     public String adminReportes() {
         return "Administrador/reportes";
     }

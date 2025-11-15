@@ -1,10 +1,209 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <title>Title</title>
+    <title>DEBUG Gym — Reportes</title>
+
+    <link rel="stylesheet"
+          href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+
+    <style>
+        :root{
+            --bg:#050509;
+            --ink:#f5f5f7;
+            --muted:#b7b7c2;
+            --accent:#ffc107;
+            --card:#111118;
+            --line:#1b1b25;
+            --ok:#22c55e;
+            --danger:#ef4444;
+        }
+        html,body{background:var(--bg);color:var(--ink)}
+        .title,.subtitle,h1,h2,h3{color:var(--ink)}
+        .cardx{
+            background:var(--card);
+            border-radius:14px;
+            border:1px solid var(--line);
+            padding:1.5rem;
+            box-shadow:0 12px 28px rgba(0,0,0,.35);
+        }
+        .kpi-number{
+            font-size:1.6rem;
+            font-weight:800;
+            color:var(--accent);
+        }
+        .kpi-label{
+            font-size:.8rem;
+            text-transform:uppercase;
+            letter-spacing:.08em;
+            color:var(--muted);
+        }
+        .table thead{
+            background:#0f0f16;
+            color:var(--accent);
+        }
+        .badge{
+            padding:.2rem .6rem;
+            border-radius:999px;
+            font-size:.75rem;
+        }
+        .badge-ok{
+            background:rgba(34,197,94,.15);
+            color:#bbf7d0;
+        }
+        .badge-warn{
+            background:rgba(234,179,8,.18);
+            color:#fef3c7;
+        }
+    </style>
 </head>
 <body>
+
+<section class="section">
+    <div class="container">
+
+        <!-- TÍTULO -->
+        <h1 class="title is-3 has-text-warning">Reportes generales</h1>
+        <p class="subtitle" style="color:var(--muted)">
+            Resumen de clientes, uso de servicios e ingresos por membresías.
+        </p>
+
+        <!-- KPIs -->
+        <div class="columns is-multiline">
+            <div class="column is-3-desktop is-6-tablet">
+                <div class="cardx">
+                    <div class="kpi-number"
+                         th:text="${totalClientes}">0</div>
+                    <div class="kpi-label">Clientes registrados</div>
+                </div>
+            </div>
+
+            <div class="column is-3-desktop is-6-tablet">
+                <div class="cardx">
+                    <div class="kpi-number"
+                         th:text="${clientesActivos}">0</div>
+                    <div class="kpi-label">Clientes con membresía activa</div>
+                </div>
+            </div>
+
+            <div class="column is-3-desktop is-6-tablet">
+                <div class="cardx">
+                    <div class="kpi-number"
+                         th:text="${clientesInactivos}">0</div>
+                    <div class="kpi-label">Clientes sin membresía vigente</div>
+                </div>
+            </div>
+
+            <div class="column is-3-desktop is-6-tablet">
+                <div class="cardx">
+                    <div class="kpi-number"
+                         th:text="'Q' + ${ingresosMes}">Q0.00</div>
+                    <div class="kpi-label">Ingresos por membresías (mes actual)</div>
+                </div>
+            </div>
+
+            <div class="column is-3-desktop is-6-tablet">
+                <div class="cardx">
+                    <div class="kpi-number"
+                         th:text="${totalRutinas}">0</div>
+                    <div class="kpi-label">Rutinas registradas</div>
+                </div>
+            </div>
+
+            <div class="column is-3-desktop is-6-tablet">
+                <div class="cardx">
+                    <div class="kpi-number"
+                         th:text="${totalDietas}">0</div>
+                    <div class="kpi-label">Dietas registradas</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- FILA: últimas membresías + top clientes -->
+        <div class="columns mt-4">
+
+            <!-- Últimas membresías -->
+            <div class="column is-7">
+                <div class="cardx">
+                    <h2 class="title is-5">Últimas membresías vendidas</h2>
+
+                    <div class="table-container">
+                        <table class="table is-fullwidth is-striped is-dark">
+                            <thead>
+                            <tr>
+                                <th>Cliente</th>
+                                <th>Plan</th>
+                                <th>Monto</th>
+                                <th>Inicio</th>
+                                <th>Fin</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr th:each="m : ${ultimasMembresias}">
+                                <td th:text="${m.cliente}">Juan Pérez</td>
+                                <td th:text="${m.plan}">Mensual</td>
+                                <td th:text="'Q' + ${m.monto}">Q200</td>
+                                <td th:text="${m.fechaInicio}">2025-11-01</td>
+                                <td th:text="${m.fechaFin}">2025-11-30</td>
+                            </tr>
+
+                            <tr th:if="${#lists.isEmpty(ultimasMembresias)}">
+                                <td colspan="5" class="has-text-centered" style="color:var(--muted)">
+                                    No hay registros de membresías.
+                                </td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Top clientes por uso -->
+            <div class="column is-5">
+                <div class="cardx">
+                    <h2 class="title is-5">Top clientes por uso</h2>
+                    <p style="color:var(--muted);font-size:.85rem;">
+                        Basado en cantidad de rutinas y dietas asignadas.
+                    </p>
+
+                    <div class="table-container mt-3">
+                        <table class="table is-fullwidth is-striped is-dark">
+                            <thead>
+                            <tr>
+                                <th>Cliente</th>
+                                <th>Rutinas</th>
+                                <th>Dietas</th>
+                                <th>Total</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr th:each="c : ${topClientes}">
+                                <td th:text="${c.cliente}">Nombre Cliente</td>
+                                <td th:text="${c.rutinas}">2</td>
+                                <td th:text="${c.dietas}">3</td>
+                                <td th:text="${c.total}">5</td>
+                            </tr>
+
+                            <tr th:if="${#lists.isEmpty(topClientes)}">
+                                <td colspan="4" class="has-text-centered" style="color:var(--muted)">
+                                    No hay datos suficientes para mostrar el ranking.
+                                </td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <!-- Volver -->
+        <div class="mt-5">
+            <a href="/admin" class="button is-light">Volver al panel admin</a>
+        </div>
+
+    </div>
+</section>
 
 </body>
 </html>
