@@ -23,11 +23,10 @@ import java.util.*;
 import java.util.function.Consumer;
 
 /**
- * Controlador único consolidado:
- * - sin referencias a la columna 'peso'
- * - operaciones de borrado ejecutadas en EntityManager aislado (runInIsolatedEm)
- * - inserciones/updates ejecutadas con TransactionTemplate (txTemplate) por fila
- * - logging con SLF4J
+ * Controlador completo para manejo de rutinas e detalles.
+ * - Detecta dinámicamente el nombre de la columna PK en rutina_detalle para evitar referencias a "id" que no existan.
+ * - Usa consultas nativas con mapeo defensivo.
+ * - Todos los endpoints usan POST donde tu app ya espera POST (no PUT/DELETE desde JS).
  */
 @Controller
 @RequestMapping("/instructor/rutinas")
@@ -41,6 +40,9 @@ public class RutinaInstructorController {
     private final TransactionTemplate txTemplate;
     private final PlatformTransactionManager txManager;
 
+    // cache para el nombre de la columna id en rutina_detalle
+    private volatile String cachedDetalleIdCol = null;
+
     @Autowired
     public RutinaInstructorController(PlatformTransactionManager txManager) {
         this.txManager = txManager;
@@ -53,7 +55,6 @@ public class RutinaInstructorController {
         try {
             emf = em.getEntityManagerFactory();
         } catch (Exception ex) {
-            // Fallback: si no está disponible, ejecutar con txTemplate sobre el EM compartido
             logger.warn("EntityManagerFactory no disponible, fallback a txTemplate: {}", ex.getMessage());
             txTemplate.execute(status -> {
                 try {
@@ -90,6 +91,46 @@ public class RutinaInstructorController {
         }
     }
 
+    // Detecta la columna id de rutina_detalle (cacheada). Usa parámetro posicional para evitar problemas.
+    private String getDetalleIdColumn() {
+        if (cachedDetalleIdCol != null) return cachedDetalleIdCol;
+        synchronized (this) {
+            if (cachedDetalleIdCol != null) return cachedDetalleIdCol;
+            cachedDetalleIdCol = detectIdColumn(em, "rutina_detalle");
+            if (cachedDetalleIdCol != null) {
+                logger.info("Columna ID detectada para rutina_detalle: {}", cachedDetalleIdCol);
+            } else {
+                logger.info("No se detectó columna ID 'convencional' en rutina_detalle; se usará mapeo flexible.");
+            }
+            return cachedDetalleIdCol;
+        }
+    }
+
+    // Detecta nombre de columna posible en información del esquema (usa parámetro posicional)
+    private String detectIdColumn(EntityManager emLocal, String tableName) {
+        List<String> candidates = Arrays.asList(
+                "id", "detalle_id", "id_detalle", "id_rutina_detalle", "rutina_detalle_id", "pk", "idrutina_detalle", "id_rutina"
+        );
+        try {
+            @SuppressWarnings("unchecked")
+            List<Object> cols = emLocal.createNativeQuery(
+                    "SELECT column_name FROM information_schema.columns WHERE table_name = ?1 AND table_schema = current_schema()"
+            ).setParameter(1, tableName).getResultList();
+            Set<String> colSet = new HashSet<>();
+            for (Object c : cols) if (c != null) colSet.add(c.toString().toLowerCase(Locale.ROOT));
+
+            for (String cand : candidates) {
+                if (colSet.contains(cand.toLowerCase(Locale.ROOT))) {
+                    logger.debug("Found id column '{}' for table {}", cand, tableName);
+                    return cand;
+                }
+            }
+        } catch (Exception ex) {
+            logger.debug("Could not detect columns for {}: {}", tableName, ex.getMessage());
+        }
+        return null;
+    }
+
     @GetMapping
     public String listarRutinas(HttpSession session, Model model) {
         Integer uid = (Integer) session.getAttribute("uid");
@@ -105,19 +146,30 @@ public class RutinaInstructorController {
                 .getResultList();
 
         List<RutinaView> views = new ArrayList<>();
+
+        // Obtener (y cachear) la columna id de rutina_detalle
+        String detalleIdCol = getDetalleIdColumn();
+
         for (Rutina r : rutinas) {
             RutinaView rv = new RutinaView();
             rv.rutina = r;
             rv.detalles = new ArrayList<>();
 
             boolean success = false;
-            String[] orderings = new String[]{"rd.id", "rd.id_ejercicio", "rd.id_rutina, rd.id_ejercicio", ""};
 
-            for (String order : orderings) {
-                String orderClause = (order != null && !order.trim().isEmpty()) ? (" ORDER BY " + order) : "";
-                String sql = "SELECT rd.id as detalle_id, rd.id_ejercicio, rd.dia_semana, rd.series, rd.repeticiones, e.nombre as ejercicio_nombre " +
-                        "FROM rutina_detalle rd LEFT JOIN ejercicio e ON e.id = rd.id_ejercicio " +
-                        "WHERE rd.id_rutina = ? " + orderClause;
+            // candidate orders: priorizar id_ejercicio y fallback si detectamos id de detalle
+            List<String> candidateOrders = new ArrayList<>();
+            candidateOrders.add("rd.id_ejercicio");
+            if (detalleIdCol != null && !detalleIdCol.isEmpty()) candidateOrders.add("rd." + detalleIdCol);
+            candidateOrders.add("");
+
+            for (String orderClause : candidateOrders) {
+                String orderSql = (orderClause != null && !orderClause.trim().isEmpty()) ? (" ORDER BY " + orderClause) : "";
+                String selectIdPart = (detalleIdCol != null && !detalleIdCol.isEmpty()) ? ("rd." + detalleIdCol + " as detalle_id, ") : "";
+                String sql = "SELECT " + selectIdPart +
+                        "rd.id_ejercicio, rd.dia_semana, rd.series, rd.repeticiones, e.nombre as ejercicio_nombre " +
+                        "FROM rutina_detalle rd LEFT JOIN ejercicios e ON e.id_ejercicio = rd.id_ejercicio " +
+                        "WHERE rd.id_rutina = ?1 " + orderSql;
                 try {
                     @SuppressWarnings("unchecked")
                     List<Object[]> rows = em.createNativeQuery(sql)
@@ -126,21 +178,27 @@ public class RutinaInstructorController {
 
                     if (rows != null) {
                         for (Object[] row : rows) {
-                            if (row.length >= 6) {
-                                Detalle d = new Detalle();
-                                d.detalleId = row[0] != null ? ((Number) row[0]).intValue() : null;
-                                d.ejercicioId = row[1] != null ? ((Number) row[1]).intValue() : null;
-                                d.diaSemana = row[2] != null ? row[2].toString() : "";
-                                d.series = row[3] != null ? ((Number) row[3]).intValue() : null;
-                                d.repeticiones = row[4] != null ? ((Number) row[4]).intValue() : null;
-                                d.ejercicioNombre = row[5] != null ? row[5].toString() : "Ejercicio";
-                                rv.detalles.add(d);
+                            Detalle d = new Detalle();
+                            int baseIdx = 0;
+                            if (detalleIdCol != null && !detalleIdCol.isEmpty()) {
+                                d.detalleId = (row.length > 0 && row[0] instanceof Number) ? ((Number) row[0]).intValue() : null;
+                                baseIdx = 1;
+                            } else {
+                                d.detalleId = null;
+                                baseIdx = 0;
                             }
+                            d.ejercicioId = (row.length > baseIdx && row[baseIdx] instanceof Number) ? ((Number) row[baseIdx]).intValue() : null;
+                            d.diaSemana = (row.length > baseIdx + 1 && row[baseIdx + 1] != null) ? row[baseIdx + 1].toString() : "";
+                            d.series = (row.length > baseIdx + 2 && row[baseIdx + 2] instanceof Number) ? ((Number) row[baseIdx + 2]).intValue() : null;
+                            d.repeticiones = (row.length > baseIdx + 3 && row[baseIdx + 3] instanceof Number) ? ((Number) row[baseIdx + 3]).intValue() : null;
+                            d.ejercicioNombre = (row.length > baseIdx + 4 && row[baseIdx + 4] != null) ? row[baseIdx + 4].toString() : "Ejercicio";
+                            rv.detalles.add(d);
                         }
                     }
                     success = true;
                     break;
-                } catch (SQLGrammarException ignored) {
+                } catch (SQLGrammarException sge) {
+                    logger.debug("ORDER BY no válido (intentando siguiente): {} -> {}", orderClause, sge.getMessage());
                 } catch (Exception ex) {
                     logger.debug("Ignored exception while trying ordering variant: {}", ex.getMessage());
                 }
@@ -149,7 +207,7 @@ public class RutinaInstructorController {
             if (!success) {
                 try {
                     @SuppressWarnings("unchecked")
-                    List<Object[]> rows2 = em.createNativeQuery("SELECT * FROM rutina_detalle WHERE id_rutina = ?")
+                    List<Object[]> rows2 = em.createNativeQuery("SELECT * FROM rutina_detalle WHERE id_rutina = ?1")
                             .setParameter(1, r.getId())
                             .getResultList();
                     if (rows2 != null) {
@@ -222,8 +280,7 @@ public class RutinaInstructorController {
         try {
             @SuppressWarnings("unchecked")
             List<Object[]> rows = em.createNativeQuery(
-                            "SELECT rd.id, rd.id_ejercicio, rd.dia_semana, rd.series, rd.repeticiones " +
-                                    "FROM rutina_detalle rd WHERE rd.id_rutina = ? ORDER BY rd.id")
+                            "SELECT rd.*, e.nombre as ejercicio_nombre FROM rutina_detalle rd LEFT JOIN ejercicios e ON e.id_ejercicio = rd.id_ejercicio WHERE rd.id_rutina = ?1 ORDER BY rd.id_ejercicio")
                     .setParameter(1, id)
                     .getResultList();
 
@@ -235,12 +292,23 @@ public class RutinaInstructorController {
                     Integer series = null;
                     Integer repes = null;
 
+                    // intentar mapear conservadoramente
                     if (row.length >= 5) {
-                        if (row[0] instanceof Number) detalleId = ((Number) row[0]).intValue();
-                        if (row[1] instanceof Number) ejercicioId = ((Number) row[1]).intValue();
-                        dia = row[2] != null ? row[2].toString() : "";
-                        if (row[3] instanceof Number) series = ((Number) row[3]).intValue();
-                        if (row[4] instanceof Number) repes = ((Number) row[4]).intValue();
+                        // buscar primero una columna numérica plausible para ejercicioId
+                        // (no asumimos posición fija en este fallback)
+                        for (Object col : row) {
+                            if (col instanceof Number && ejercicioId == null) {
+                                ejercicioId = ((Number) col).intValue();
+                            }
+                        }
+                        // intenta asignaciones por posición si no están vacías
+                        // (este bloque es un simple fallback para mostrar datos en el form de edición)
+                        if (row.length >= 2) {
+                            ejercicioId = (row[1] instanceof Number) ? ((Number) row[1]).intValue() : ejercicioId;
+                        }
+                        dia = row.length > 2 && row[2] != null ? row[2].toString() : dia;
+                        series = row.length > 3 && row[3] instanceof Number ? ((Number) row[3]).intValue() : series;
+                        repes = row.length > 4 && row[4] instanceof Number ? ((Number) row[4]).intValue() : repes;
                     }
 
                     String nombreEj = "";
@@ -307,7 +375,7 @@ public class RutinaInstructorController {
             }
 
             try {
-                em.createNativeQuery("DELETE FROM rutina_detalle WHERE id_rutina = ?")
+                em.createNativeQuery("DELETE FROM rutina_detalle WHERE id_rutina = ?1")
                         .setParameter(1, rutinaToPersist.getId())
                         .executeUpdate();
             } catch (Exception ignored) {}
@@ -326,7 +394,7 @@ public class RutinaInstructorController {
 
                 try {
                     txTemplate.execute(status -> {
-                        em.createNativeQuery("INSERT INTO rutina_detalle (id_rutina, id_ejercicio, dia_semana, series, repeticiones) VALUES (?, ?, ?, ?, ?)")
+                        em.createNativeQuery("INSERT INTO rutina_detalle (id_rutina, id_ejercicio, dia_semana, series, repeticiones) VALUES (?1, ?2, ?3, ?4, ?5)")
                                 .setParameter(1, finalRutinaId)
                                 .setParameter(2, ejId)
                                 .setParameter(3, dia)
@@ -360,7 +428,7 @@ public class RutinaInstructorController {
         final String dia = diaSemana;
 
         runInIsolatedEm(emIso -> {
-            emIso.createNativeQuery("INSERT INTO rutina_detalle (id_rutina, id_ejercicio, dia_semana, series, repeticiones) VALUES (?, ?, ?, ?, ?)")
+            emIso.createNativeQuery("INSERT INTO rutina_detalle (id_rutina, id_ejercicio, dia_semana, series, repeticiones) VALUES (?1, ?2, ?3, ?4, ?5)")
                     .setParameter(1, rid)
                     .setParameter(2, ejId)
                     .setParameter(3, dia)
@@ -379,9 +447,15 @@ public class RutinaInstructorController {
         final Integer did = detalleId;
 
         runInIsolatedEm(emIso -> {
-            emIso.createNativeQuery("DELETE FROM rutina_detalle WHERE id = ?")
-                    .setParameter(1, did)
-                    .executeUpdate();
+            String detCol = getDetalleIdColumn();
+            if (detCol != null && !detCol.isEmpty()) {
+                emIso.createNativeQuery("DELETE FROM rutina_detalle WHERE " + detCol + " = ?1")
+                        .setParameter(1, did)
+                        .executeUpdate();
+            } else {
+                // fallback: intentar con 'id'
+                emIso.createNativeQuery("DELETE FROM rutina_detalle WHERE id = ?1").setParameter(1, did).executeUpdate();
+            }
         });
 
         return "redirect:/instructor/rutinas";
@@ -400,7 +474,7 @@ public class RutinaInstructorController {
 
         runInIsolatedEm(emIso -> {
             if (ejId != null && dia != null) {
-                emIso.createNativeQuery("DELETE FROM rutina_detalle WHERE id_rutina = ? AND id_ejercicio = ? AND dia_semana = ?")
+                emIso.createNativeQuery("DELETE FROM rutina_detalle WHERE id_rutina = ?1 AND id_ejercicio = ?2 AND dia_semana = ?3")
                         .setParameter(1, rid)
                         .setParameter(2, ejId)
                         .setParameter(3, dia)
@@ -418,9 +492,7 @@ public class RutinaInstructorController {
         final Integer rid = id;
 
         runInIsolatedEm(emIso -> {
-            // borrar detalles vía SQL nativo (ya existe rutina_detalle)
-            emIso.createNativeQuery("DELETE FROM rutina_detalle WHERE id_rutina = ?").setParameter(1, rid).executeUpdate();
-            // borrar Rutina usando JPQL (usa el mapeo de la entidad Rutina)
+            emIso.createNativeQuery("DELETE FROM rutina_detalle WHERE id_rutina = ?1").setParameter(1, rid).executeUpdate();
             emIso.createQuery("DELETE FROM Rutina r WHERE r.id = :id").setParameter("id", rid).executeUpdate();
         });
 
@@ -445,6 +517,7 @@ public class RutinaInstructorController {
         final Integer rid = rutinaId;
         final String n = nombre;
         final String d = descripcion;
+        final String detCol = getDetalleIdColumn();
 
         if ((n != null && !n.isBlank()) || (d != null)) {
             txTemplate.execute(status -> {
@@ -470,13 +543,22 @@ public class RutinaInstructorController {
                 try {
                     txTemplate.execute(status -> {
                         if (did != null) {
-                            em.createNativeQuery("UPDATE rutina_detalle SET series = ?, repeticiones = ? WHERE id = ?")
-                                    .setParameter(1, s)
-                                    .setParameter(2, rVal)
-                                    .setParameter(3, did)
-                                    .executeUpdate();
+                            // usar la columna detectada si existe
+                            if (detCol != null && !detCol.isEmpty()) {
+                                em.createNativeQuery("UPDATE rutina_detalle SET series = ?1, repeticiones = ?2 WHERE " + detCol + " = ?3")
+                                        .setParameter(1, s)
+                                        .setParameter(2, rVal)
+                                        .setParameter(3, did)
+                                        .executeUpdate();
+                            } else {
+                                em.createNativeQuery("UPDATE rutina_detalle SET series = ?1, repeticiones = ?2 WHERE id = ?3")
+                                        .setParameter(1, s)
+                                        .setParameter(2, rVal)
+                                        .setParameter(3, did)
+                                        .executeUpdate();
+                            }
                         } else if (ejId != null && dia != null) {
-                            em.createNativeQuery("UPDATE rutina_detalle SET series = ?, repeticiones = ? WHERE id_rutina = ? AND id_ejercicio = ? AND dia_semana = ?")
+                            em.createNativeQuery("UPDATE rutina_detalle SET series = ?1, repeticiones = ?2 WHERE id_rutina = ?3 AND id_ejercicio = ?4 AND dia_semana = ?5")
                                     .setParameter(1, s)
                                     .setParameter(2, rVal)
                                     .setParameter(3, rid)
@@ -495,31 +577,25 @@ public class RutinaInstructorController {
         return "redirect:/instructor/rutinas";
     }
 
+    // Mapeo flexible cuando la estructura de columnas varía
     private Detalle mapRowToDetalleFlexible(Object[] row, Integer rutinaId) {
         Detalle d = new Detalle();
         try {
             if (row.length >= 5) {
-                if (row[0] instanceof Number && ((Number) row[0]).intValue() == rutinaId) {
-                    d.detalleId = null;
+                Integer possibleId = null;
+                if (row[0] instanceof Number) {
+                    int v = ((Number) row[0]).intValue();
+                    if (v > 0 && v != rutinaId) possibleId = v;
+                }
+                if (possibleId != null) {
+                    d.detalleId = possibleId;
                     d.ejercicioId = (row[1] instanceof Number) ? ((Number) row[1]).intValue() : null;
-                    d.diaSemana = row[2] != null ? row[2].toString() : "";
-                    d.series = (row[3] instanceof Number) ? ((Number) row[3]).intValue() : null;
-                    d.repeticiones = (row[4] instanceof Number) ? ((Number) row[4]).intValue() : null;
-                } else if (row[0] instanceof Number && row[1] instanceof Number) {
-                    d.detalleId = ((Number) row[0]).intValue();
-                    d.ejercicioId = ((Number) row[1]).intValue();
                     d.diaSemana = row.length > 2 && row[2] != null ? row[2].toString() : "";
                     d.series = row.length > 3 && row[3] instanceof Number ? ((Number) row[3]).intValue() : null;
                     d.repeticiones = row.length > 4 && row[4] instanceof Number ? ((Number) row[4]).intValue() : null;
                 } else {
-                    Integer foundEj = null;
-                    for (Object col : row) {
-                        if (col instanceof Number) {
-                            Integer v = ((Number) col).intValue();
-                            if (v != null && v > 0 && !v.equals(rutinaId)) { foundEj = v; break; }
-                        }
-                    }
-                    d.ejercicioId = foundEj;
+                    d.detalleId = null;
+                    d.ejercicioId = (row[1] instanceof Number) ? ((Number) row[1]).intValue() : null;
                     d.diaSemana = row.length > 2 && row[2] != null ? row[2].toString() : "";
                     d.series = row.length > 3 && row[3] instanceof Number ? ((Number) row[3]).intValue() : null;
                     d.repeticiones = row.length > 4 && row[4] instanceof Number ? ((Number) row[4]).intValue() : null;
@@ -529,13 +605,12 @@ public class RutinaInstructorController {
                 d.ejercicioId = null;
                 d.diaSemana = "";
             }
-        } catch (Exception ignored) {
+        } catch (Exception ex) {
             d.detalleId = null;
             d.ejercicioId = null;
             d.diaSemana = "";
         }
-        if (d.ejercicioId != null) d.ejercicioNombre = tryFindEjercicioNombre(d.ejercicioId);
-        else d.ejercicioNombre = "Ejercicio";
+        d.ejercicioNombre = (d.ejercicioId != null) ? tryFindEjercicioNombre(d.ejercicioId) : "Ejercicio";
         return d;
     }
 
@@ -548,6 +623,7 @@ public class RutinaInstructorController {
         return "Ejercicio";
     }
 
+    // Clases internas usadas por la vista
     public static class RutinaView {
         public Rutina rutina;
         public List<Detalle> detalles;

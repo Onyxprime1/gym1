@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width,initial-scale=1"/>
+    <title>Ejercicios · Vista de Videos</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+    <style>
+        :root{
+            --bg:#0a0a0e; --card:#111118; --line:#1b1b25; --ink:#f2f2f2; --muted:#b7b7c2; --accent:#ffc107;
+        }
+        html,body{background:var(--bg);color:var(--ink);margin:0;padding:0;font-family:Inter,Arial,Helvetica,sans-serif}
+        .containerx{max-width:1100px;margin:2rem auto;padding:0 1rem}
+        .cardx{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:1rem;margin-bottom:1rem}
+        .tablex{width:100%;border-collapse:collapse}
+        .tablex th, .tablex td{padding:.6rem .75rem;border-bottom:1px solid rgba(255,255,255,.03);text-align:left;color:var(--ink)}
+        .muted{color:var(--muted)}
+        .small-btn{padding:.35rem .6rem;border-radius:6px;cursor:pointer;border:none}
+        .btn-view{background:#2ecc71;color:#fff}
+        .btn-back{background:#3aa0ff;color:#fff}
+        .search { width:100%;padding:.6rem;border-radius:8px;border:1px solid #262626;background:#0f0f14;color:#fff }
+        /* modal */
+        .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:2000}
+        .modal-card{background:#0f0f14;border-radius:8px;padding:1rem;max-width:900px;width:95%;color:var(--ink);box-shadow:0 10px 30px rgba(0,0,0,.6)}
+        .modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem}
+        .modal-body{display:flex;flex-direction:column;gap:.75rem}
+        .modal-video{width:100%;height:480px;background:#000;border-radius:6px;overflow:hidden}
+        @media (max-width:700px){ .modal-video{height:240px} }
+        .meta{font-size:.95rem}
+        .meta .title{font-weight:700;margin-bottom:.25rem}
+    </style>
+</head>
+<body>
+<nav class="navbar">
+    <div class="containerx" style="display:flex;align-items:center">
+        <div class="brand" style="font-weight:800;color:var(--accent)">DEBUG Gym · Ejercicios</div>
+    </div>
+</nav>
+
+<main>
+    <div class="containerx">
+        <div class="cardx">
+            <div style="display:flex;align-items:center;gap:.75rem">
+                <h1 style="margin:0">Listado de ejercicios</h1>
+                <div class="muted" style="margin-left:1rem">Pulsa "Vista" para abrir el vídeo y ver detalles.</div>
+            </div>
+
+            <div style="margin-top:1rem;display:flex;gap:.5rem;align-items:center">
+                <input id="searchInput" class="search" placeholder="Buscar por nombre o músculo..." oninput="filterEjercicios()" />
+                <a th:href="@{/instructor}" class="small-btn btn-back" style="margin-left:auto">Volver</a>
+            </div>
+        </div>
+
+        <div class="cardx" th:if="${#lists.isEmpty(ejercicios)}">No hay ejercicios disponibles.</div>
+
+        <div class="cardx" th:if="${!#lists.isEmpty(ejercicios)}">
+            <table class="tablex" aria-describedby="ejercicios-list">
+                <thead>
+                <tr>
+                    <th>Nombre</th>
+                    <th>Músculo</th>
+                    <th>Descripción</th>
+                    <th>Video</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="e : ${ejercicios}" th:attr="data-text=${(e.nombre + ' ' + (e.musculo?:'') + ' ' + (e.descripcion?:'')).toLowerCase()}">
+                    <td th:text="${e.nombre}">Nombre ejercicio</td>
+                    <td th:text="${e.musculo}">Músculo</td>
+                    <td>
+                        <div style="max-width:600px;white-space:pre-wrap" th:text="${e.descripcion}">Descripción...</div>
+                    </td>
+                    <td>
+                        <button type="button"
+                                class="small-btn btn-view"
+                                th:attr="data-link=${e.linkVideo},data-nombre=${e.nombre},data-musculo=${e.musculo},data-desc=${e.descripcion}"
+                                onclick="openExerciseView(this)">
+                            Vista
+                        </button>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</main>
+
+<!-- Modal -->
+<div id="videoModal" class="modal-backdrop" onclick="closeVideoModal(event)">
+    <div class="modal-card" role="dialog" aria-modal="true" onclick="event.stopPropagation()">
+        <div class="modal-header">
+            <div id="modalTitle" style="font-weight:700">Vista del ejercicio</div>
+            <button class="small-btn" onclick="closeVideoModal()">Cerrar</button>
+        </div>
+        <div class="modal-body">
+            <div class="modal-video" id="modalVideoContainer" aria-live="polite">
+                <!-- iframe / player injected here -->
+            </div>
+
+            <div class="meta">
+                <div id="modalEjNombre" class="title"></div>
+                <div id="modalEjMusculo" class="muted"></div>
+                <div id="modalEjDesc" style="margin-top:.5rem;white-space:pre-wrap"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // FILTRADO simple
+    function filterEjercicios() {
+        const q = (document.getElementById('searchInput').value || '').toLowerCase().trim();
+        document.querySelectorAll('tr[th\\:each]').forEach(()=>{}); // noop to silence Thymeleaf dev-time warnings
+        document.querySelectorAll('tbody tr').forEach(function(row) {
+            const text = (row.getAttribute('data-text') || '').toLowerCase();
+            row.style.display = text.indexOf(q) !== -1 ? '' : 'none';
+        });
+    }
+
+    // Modal and player control
+    let ytPlayer = null;
+    let usingYouTubeAPI = false;
+
+    // Load YouTube IFrame API asynchronously
+    (function loadYouTubeApi() {
+        const tag = document.createElement('script');
+        tag.src = "https://www.youtube.com/iframe_api";
+        tag.async = true;
+        document.head.appendChild(tag);
+        // onYouTubeIframeAPIReady will be called by API when loaded
+    })();
+
+    // Helper to extract YouTube video id from common URLs
+    function extractYouTubeId(url) {
+        if (!url) return null;
+        url = url.trim();
+        // shorten cases
+        const short = url.match(/youtu\\.be\\/([a-zA-Z0-9_-]{6,})/);
+        if (short && short[1]) return short[1];
+        const embed = url.match(/youtube\\.com\\/embed\\/([a-zA-Z0-9_-]{6,})/);
+        if (embed && embed[1]) return embed[1];
+        const vparam = url.match(/[?&]v=([a-zA-Z0-9_-]{6,})/);
+        if (vparam && vparam[1]) return vparam[1];
+        // fallback: last segment
+        const last = url.split('/').pop();
+        if (last && last.length >= 6) return last.split('?')[0];
+        return null;
+    }
+
+    // Called when user presses "Vista"
+    function openExerciseView(btn) {
+        const link = btn.getAttribute('data-link') || '';
+        const nombre = btn.getAttribute('data-nombre') || '';
+        const musculo = btn.getAttribute('data-musculo') || '';
+        const desc = btn.getAttribute('data-desc') || '';
+
+        document.getElementById('modalEjNombre').textContent = nombre;
+        document.getElementById('modalEjMusculo').textContent = musculo;
+        document.getElementById('modalEjDesc').textContent = desc;
+
+        const container = document.getElementById('modalVideoContainer');
+        container.innerHTML = ''; // clear previous
+
+        const videoId = extractYouTubeId(link);
+        if (!videoId) {
+            container.innerHTML = '<div style="padding:1rem;color:var(--muted)">No hay link válido de YouTube para este ejercicio.</div>';
+            openModal();
+            return;
+        }
+
+        // If YouTube API already loaded and available, use it to create a player with more control
+        if (typeof YT !== 'undefined' && YT && YT.Player) {
+            usingYouTubeAPI = true;
+            // create a div with id for player
+            const playerDiv = document.createElement('div');
+            playerDiv.id = 'yt-player';
+            playerDiv.style.width = '100%';
+            playerDiv.style.height = '100%';
+            container.appendChild(playerDiv);
+
+            // destroy previous player if exists
+            if (ytPlayer && typeof ytPlayer.destroy === 'function') {
+                try { ytPlayer.destroy(); } catch(e) { /* ignore */ }
+                ytPlayer = null;
+            }
+
+            ytPlayer = new YT.Player('yt-player', {
+                videoId: videoId,
+                playerVars: { 'autoplay': 1, 'rel': 0 },
+                events: {
+                    onReady: function(ev) { ev.target.playVideo(); },
+                    onError: function(ev) { console.error('YT player error', ev); }
+                }
+            });
+        } else {
+            // fallback: simple iframe embed
+            const iframe = document.createElement('iframe');
+            iframe.width = '100%';
+            iframe.height = '100%';
+            iframe.src = 'https://www.youtube.com/embed/' + encodeURIComponent(videoId) + '?rel=0&autoplay=1';
+            iframe.frameBorder = '0';
+            iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
+            iframe.allowFullscreen = true;
+            container.appendChild(iframe);
+        }
+
+        openModal();
+    }
+
+    function openModal() {
+        const modal = document.getElementById('videoModal');
+        modal.style.display = 'flex';
+    }
+
+    function closeVideoModal(ev) {
+        // clicked backdrop OR close button
+        if (ev && ev.target && ev.target.closest && ev.target.closest('.modal-card') ) return;
+        const modal = document.getElementById('videoModal');
+        const container = document.getElementById('modalVideoContainer');
+        modal.style.display = 'none';
+        // destroy YT player to stop audio
+        if (ytPlayer && typeof ytPlayer.destroy === 'function') {
+            try { ytPlayer.destroy(); } catch(e) {}
+            ytPlayer = null;
+        } else {
+            // remove iframe fallback
+            container.innerHTML = '';
+        }
+    }
+
+    // Optional API callback (YT will call if it loads)
+    function onYouTubeIframeAPIReady() {
+        // API ready - future players will use YT.Player
+        console.debug('YouTube IFrame API ready');
+    }
+</script>
+</body>
+</html>

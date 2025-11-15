@@ -160,7 +160,10 @@
 </main>
 
 <script>
-    // Solo JS mínimo: abrir/ cerrar detalles y filtrado. No intercepta submits.
+    // Solo JS mínimo: abrir/ cerrar detalles y filtrado. No intercepta submits EXCEPTO para:
+    // - confirmar + AJAX-delete (rutina o detalle)
+    // - interceptar submit del form-detalles-{id} para mostrar payload (alert) antes de enviar y luego enviar por fetch
+    // Esto ayuda a depurar por qué antes no se guardaba.
     function toggleDetails(btn) {
         const header = btn.closest('.rutina-header');
         const body = header.nextElementSibling;
@@ -196,8 +199,96 @@
         });
     }
 
-    // ensure form-submit buttons that reference forms by id will work in older browsers,
-    // but modern browsers support form attribute — no extra JS needed.
+    // --- AJAX handlers (with alert payload) ---
+    document.addEventListener('submit', async function (ev) {
+        const form = ev.target;
+        if (!(form instanceof HTMLFormElement)) return;
+
+        const action = (form.getAttribute('action') || '');
+
+        // 1) Si es form de GUARDAR detalles -> interceptar para mostrar payload y enviar por fetch POST
+        if (action.includes('/detalles/guardar')) {
+            ev.preventDefault();
+
+            // Build FormData and prepare debug object
+            const fd = new FormData(form);
+            const debug = {};
+            fd.forEach((v,k) => {
+                if (!debug[k]) debug[k] = [];
+                debug[k].push(v);
+            });
+
+            // Show alert with payload (user requested)
+            alert('Datos que se enviarán (payload):\n' + JSON.stringify(debug, null, 2));
+
+            try {
+                // Send POST as FormData so Spring receives same parameters
+                const resp = await fetch(action, {
+                    method: 'POST',
+                    body: fd,
+                    credentials: 'same-origin',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                if (resp.ok) {
+                    alert('Guardado correctamente.');
+                    // reload to reflect server changes
+                    location.reload();
+                } else {
+                    const text = await resp.text().catch(()=>resp.statusText||'Error');
+                    alert('Error guardando en el servidor: ' + (text || resp.status));
+                    console.error('Error save:', resp.status, text);
+                }
+            } catch (err) {
+                console.error('Network error al guardar:', err);
+                alert('Error de red al guardar. Revisa la consola.');
+            }
+            return;
+        }
+
+        // 2) Si es formulario de eliminación (detalle o rutina) -> confirm and AJAX POST
+        if (action.includes('/detalles/eliminar') || action.includes('/eliminar')) {
+            // we still show confirm via onsubmit attribute in markup but double-check
+            if (!confirm('¿Confirmas que quieres eliminar?')) {
+                ev.preventDefault();
+                return;
+            }
+            ev.preventDefault();
+            try {
+                const fd = new FormData(form);
+                const resp = await fetch(action, {
+                    method: 'POST',
+                    body: fd,
+                    credentials: 'same-origin',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                if (resp.ok) {
+                    // remove row if detalle delete
+                    if (action.includes('/detalles/eliminar')) {
+                        const tr = form.closest('tr');
+                        if (tr) tr.remove();
+                        else location.reload();
+                    } else {
+                        // routine deleted
+                        const block = form.closest('.rutina-block');
+                        if (block) block.remove();
+                        else location.reload();
+                    }
+                } else {
+                    const text = await resp.text().catch(()=>resp.statusText||'Error');
+                    alert('Error al eliminar en el servidor: ' + (text || resp.status));
+                    console.error('Error delete:', resp.status, text);
+                }
+            } catch (err) {
+                console.error('Network error al eliminar:', err);
+                alert('Error de red al eliminar. Revisa la consola.');
+            }
+            return;
+        }
+
+        // otherwise let the form submit normally (e.g., agregar)
+    }, true); // capture phase to ensure we catch submits
+
+    // end AJAX handlers
 </script>
 </body>
 </html>
