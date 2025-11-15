@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>DEBUG Gym — Rutinas</title>
+
+    <link rel="stylesheet"
+          href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+
+    <style>
+        :root{
+            --bg:#050509;
+            --ink:#f5f5f7;
+            --muted:#b7b7c2;
+            --accent:#ffc107;
+            --card:#111118;
+            --line:#1b1b25;
+            --ok:#22c55e;
+            --danger:#ef4444;
+        }
+        html, body { background:var(--bg); color:var(--ink); }
+        .title, .subtitle { color:var(--ink); }
+        .cardx {
+            background:var(--card);
+            border:1px solid var(--line);
+            border-radius:14px;
+            padding:1.5rem;
+            box-shadow:0 12px 28px rgba(0,0,0,.35);
+        }
+        .badge {
+            padding:.3rem .7rem;
+            border-radius:8px;
+            font-size:.8rem;
+        }
+        .badge-ok {
+            background:rgba(34,197,94,.2);
+            color:#86efac;
+        }
+        .badge-warn {
+            background:rgba(255,193,7,.25);
+            color:var(--accent);
+        }
+        .badge-danger {
+            background:rgba(239,68,68,.25);
+            color:#fca5a5;
+        }
+        table thead {
+            background:#0f0f16;
+            color:var(--accent);
+        }
+        a { color:var(--accent); }
+        .btn-main {
+            background:var(--accent);
+            color:#000;
+            font-weight:700;
+            border:none;
+            border-radius:8px;
+        }
+        .btn-main:hover { filter:brightness(.9); }
+    </style>
+</head>
+
+<body>
+
+<section class="section">
+    <div class="container">
+
+        <!-- ENCABEZADO -->
+        <h1 class="title is-3">Rutina personal</h1>
+        <p class="subtitle has-text-grey-light">
+            Aquí puedes ver tu planificación diaria de ejercicios.
+        </p>
+
+        <!-- PANEL DEL CLIENTE -->
+        <div class="cardx mb-5">
+            <h2 class="title is-5 mb-3">Tu Plan</h2>
+
+            <div class="columns is-multiline">
+
+                <div class="column is-4">
+                    <p class="has-text-grey-light is-size-7">Plan</p>
+                    <span class="badge badge-ok" th:text="${planNivel}">Básico</span>
+                </div>
+
+                <div class="column is-4">
+                    <p class="has-text-grey-light is-size-7">Estado</p>
+                    <span th:if="${vigente}" class="badge badge-ok">Activo</span>
+                    <span th:if="${!vigente}" class="badge badge-danger">Vencido</span>
+                </div>
+
+                <div class="column is-4">
+                    <p class="has-text-grey-light is-size-7">Próximo pago</p>
+                    <span class="badge badge-warn" th:text="${proxPago}">2025-11-20</span>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- TABLA DE RUTINAS -->
+        <div class="cardx">
+
+            <h2 class="title is-5 mb-3">Tu rutina de la semana</h2>
+
+            <div class="table-container">
+                <table class="table is-fullwidth is-striped is-dark">
+                    <thead>
+                    <tr>
+                        <th>Día</th>
+                        <th>Rutina</th>
+                        <th>Ejercicio</th>
+                        <th>Series</th>
+                        <th>Reps</th>
+                        <th>Músculo</th>
+                        <th>Video</th>
+                    </tr>
+                    </thead>
+
+                    <tbody>
+
+                    <tr th:each="r : ${rutinaDias}">
+                        <td th:text="${r.diaSemana}">Lunes</td>
+                        <td th:text="${r.rutina}">Pecho</td>
+                        <td th:text="${r.ejercicio}">Press banca</td>
+                        <td th:text="${r.series}">4</td>
+                        <td th:text="${r.repeticiones}">12</td>
+                        <td th:text="${r.musculo}">Pectoral</td>
+
+                        <td>
+                            <a th:if="${r.linkVideo != null}"
+                               th:href="${r.linkVideo}"
+                               target="_blank">
+                                Ver video 🎥
+                            </a>
+                            <span th:if="${r.linkVideo == null}" class="has-text-grey">
+                                —
+                            </span>
+                        </td>
+                    </tr>
+
+                    <tr th:if="${#lists.isEmpty(rutinaDias)}">
+                        <td colspan="7" class="has-text-centered has-text-grey">
+                            No tienes rutina asignada todavía.
+                        </td>
+                    </tr>
+
+                    </tbody>
+                </table>
+            </div>
+
+        </div>
+
+        <!-- BOTÓN VOLVER -->
+        <div class="mt-5">
+            <a href="/inicio" class="button is-light">Volver al menú</a>
+        </div>
+
+    </div>
+</section>
+
+</body>
+</html>

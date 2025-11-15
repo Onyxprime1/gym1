@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>DEBUG Gym — Mi Progreso</title>
+    <link rel="stylesheet"
+          href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+
+    <style>
+        :root{
+            --bg:#0a0a0e;
+            --ink:#f5f5f7;
+            --muted:#b7b7c2;
+            --accent:#ffc107;
+            --card:#111118;
+            --line:#1b1b25;
+            --ok:#22c55e;
+        }
+        html,body{background:var(--bg);color:var(--ink);}
+        .navbar{background:#0b0b12;border-bottom:1px solid rgba(255,255,255,.08);}
+        .brand{color:var(--accent);font-weight:900;letter-spacing:.6px;}
+        .section{padding:2.5rem 1.25rem;}
+        .cardx{
+            background:var(--card);
+            border-radius:16px;
+            border:1px solid var(--line);
+            box-shadow:0 14px 32px rgba(0,0,0,.45);
+            padding:1.5rem;
+        }
+        .muted{color:var(--muted);}
+        .table thead{background:#111118;color:var(--accent);}
+        .btn-main{
+            background:var(--accent);
+            color:#111;
+            border:none;
+            border-radius:10px;
+            font-weight:700;
+        }
+        .btn-main:hover{filter:brightness(.9);}
+    </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="navbar">
+    <div class="container">
+        <div class="navbar-brand">
+            <a class="navbar-item brand" href="/inicio">DEBUG Gym</a>
+            <a role="button" class="navbar-burger" aria-label="menu" aria-expanded="false" data-target="navMain">
+                <span aria-hidden="true"></span><span aria-hidden="true"></span><span aria-hidden="true"></span>
+            </a>
+        </div>
+        <div id="navMain" class="navbar-menu">
+            <div class="navbar-end">
+                <div class="navbar-item">
+                    <a class="button is-small is-light" href="/inicio">Panel</a>
+                    <a class="button is-small is-warning ml-2" href="/login">Salir</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<section class="section">
+    <div class="container">
+
+        <!-- Encabezado -->
+        <div class="mb-4">
+            <p class="has-text-weight-semibold" style="color:var(--accent);text-transform:uppercase;font-size:.8rem;">
+                Mi progreso
+            </p>
+            <h1 class="title is-3">Registro de cambios</h1>
+            <p class="muted">
+                Lleva el control de tu peso, medidas y notas para ver cómo vas avanzando.
+            </p>
+        </div>
+
+        <!-- Formulario de registro -->
+        <div class="cardx mb-5">
+            <h2 class="title is-5 mb-3">Nuevo registro</h2>
+
+            <!-- Ajusta la acción según tu controlador -->
+            <form th:action="@{/progreso/guardar}" method="post">
+
+                <div class="columns is-multiline">
+                    <div class="column is-6">
+                        <label class="label has-text-light">Fecha</label>
+                        <div class="control">
+                            <input class="input" type="date" name="fecha" required>
+                        </div>
+                    </div>
+
+                    <div class="column is-6">
+                        <label class="label has-text-light">Peso (kg)</label>
+                        <div class="control">
+                            <input class="input" type="number" step="0.1" name="peso" required>
+                        </div>
+                    </div>
+
+                    <div class="column is-4">
+                        <label class="label has-text-light">Cintura (cm)</label>
+                        <div class="control">
+                            <input class="input" type="number" step="0.1" name="cintura">
+                        </div>
+                    </div>
+
+                    <div class="column is-4">
+                        <label class="label has-text-light">Cadera (cm)</label>
+                        <div class="control">
+                            <input class="input" type="number" step="0.1" name="cadera">
+                        </div>
+                    </div>
+
+                    <div class="column is-4">
+                        <label class="label has-text-light">Brazo (cm)</label>
+                        <div class="control">
+                            <input class="input" type="number" step="0.1" name="brazo">
+                        </div>
+                    </div>
+
+                    <div class="column is-12">
+                        <label class="label has-text-light">Notas</label>
+                        <div class="control">
+                            <textarea class="textarea" name="notas"
+                                      placeholder="Cómo te sentiste, cambios en alimentación, energía, etc."></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-4">
+                    <button type="submit" class="button btn-main">
+                        Guardar registro
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Historial -->
+        <div class="cardx">
+            <h2 class="title is-5 mb-3">Historial de progreso</h2>
+
+            <div class="table-container">
+                <table class="table is-fullwidth is-striped is-hoverable">
+                    <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Peso (kg)</th>
+                        <th>IMC</th>
+                        <th>Cintura</th>
+                        <th>Cadera</th>
+                        <th>Brazo</th>
+                        <th>Notas</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <!-- Espera una lista tipo: progresoList -->
+                    <tr th:each="p : ${progresoList}">
+                        <td th:text="${p.fecha}">2025-11-14</td>
+                        <td th:text="${p.peso}">68.5</td>
+                        <td th:text="${p.imc}">24.3</td>
+                        <td th:text="${p.cintura}">70</td>
+                        <td th:text="${p.cadera}">95</td>
+                        <td th:text="${p.brazo}">29</td>
+                        <td th:text="${p.notas}">Semana con más energía.</td>
+                    </tr>
+
+                    <tr th:if="${#lists.isEmpty(progresoList)}">
+                        <td colspan="7" class="has-text-centered muted">
+                            Aún no tienes registros. Comienza agregando uno arriba.
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+
+        </div>
+
+    </div>
+</section>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const burgers = Array.from(document.querySelectorAll('.navbar-burger'));
+        burgers.forEach(b => b.addEventListener('click', () => {
+            const t = document.getElementById(b.dataset.target);
+            b.classList.toggle('is-active');
+            if (t) t.classList.toggle('is-active');
+        }));
+    });
+</script>
+</body>
+</html>

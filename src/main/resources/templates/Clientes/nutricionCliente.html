@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>DEBUG Gym — Mis Dietas</title>
+    <link rel="stylesheet"
+          href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+
+    <style>
+        :root{
+            --bg:#0a0a0e;
+            --ink:#f5f5f7;
+            --muted:#b7b7c2;
+            --accent:#ffc107;
+            --card:#111118;
+            --line:#1b1b25;
+        }
+        html,body{background:var(--bg);color:var(--ink);}
+        .navbar{background:#0b0b12;border-bottom:1px solid rgba(255,255,255,.08);}
+        .brand{color:var(--accent);font-weight:900;letter-spacing:.6px;}
+        .section{padding:2.5rem 1.25rem;}
+        .cardx{
+            background:var(--card);
+            border-radius:16px;
+            border:1px solid var(--line);
+            box-shadow:0 14px 32px rgba(0,0,0,.45);
+            padding:1.5rem;
+        }
+        .muted{color:var(--muted);}
+        .badge{
+            display:inline-flex;
+            align-items:center;
+            gap:.3rem;
+            border-radius:999px;
+            padding:.25rem .7rem;
+            font-size:.75rem;
+            border:1px solid var(--line);
+        }
+        .badge-ok{background:rgba(34,197,94,.15);color:#bbf7d0;border-color:rgba(34,197,94,.5);}
+        .badge-danger{background:rgba(239,68,68,.15);color:#fecaca;border-color:rgba(239,68,68,.5);}
+        .table thead{background:#111118;color:var(--accent);}
+    </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="navbar">
+    <div class="container">
+        <div class="navbar-brand">
+            <a class="navbar-item brand" href="/inicio">DEBUG Gym</a>
+            <a role="button" class="navbar-burger" aria-label="menu" aria-expanded="false" data-target="navMain">
+                <span aria-hidden="true"></span><span aria-hidden="true"></span><span aria-hidden="true"></span>
+            </a>
+        </div>
+        <div id="navMain" class="navbar-menu">
+            <div class="navbar-end">
+                <div class="navbar-item">
+                    <span class="badge"
+                          th:classappend="${vigente} ? ' badge-ok' : ' badge-danger'"
+                          th:text="'Membresía: ' + (${vigente} ? 'Activa' : 'Vencida')">
+                        Membresía: —
+                    </span>
+                    <a class="button is-small is-light ml-3" href="/inicio">Panel</a>
+                    <a class="button is-small is-warning ml-2" href="/login">Salir</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<section class="section">
+    <div class="container">
+
+        <!-- Encabezado -->
+        <div class="mb-4">
+            <p class="has-text-weight-semibold" style="color:var(--accent);text-transform:uppercase;font-size:.8rem;">
+                Mis dietas
+            </p>
+            <h1 class="title is-3">Hola, <span th:text="${nombre}">Atleta</span></h1>
+            <p class="muted">
+                Aquí ves el plan de alimentación asignado por tu nutriólogo: día, hora y platillos.
+            </p>
+        </div>
+
+        <!-- Resumen rápido -->
+        <div class="cardx mb-5">
+            <div class="columns is-variable is-4">
+                <div class="column">
+                    <p class="muted is-size-7">Plan actual</p>
+                    <h2 class="title is-5" th:text="${planNivel}">Básico</h2>
+                </div>
+                <div class="column">
+                    <p class="muted is-size-7">Próximo pago</p>
+                    <h2 class="title is-5" th:text="${proxPago}">—</h2>
+                </div>
+                <div class="column">
+                    <p class="muted is-size-7">Estado</p>
+                    <h2 class="title is-5" th:text="${estado}">Sin membresía</h2>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabla de dietas -->
+        <div class="cardx">
+            <h2 class="title is-5 mb-3">Detalle de la dieta</h2>
+
+            <div class="table-container">
+                <table class="table is-fullwidth is-striped is-hoverable">
+                    <thead>
+                    <tr>
+                        <th>Día</th>
+                        <th>Hora</th>
+                        <th>Platillo</th>
+                        <th>Ingredientes</th>
+                        <th>Semana</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <!-- Espera una lista tipo: dietaDetalle -->
+                    <tr th:each="d : ${dietaDetalle}">
+                        <td th:text="${d.diaSemana}">Lunes</td>
+                        <td th:text="${d.hora}">07:00</td>
+                        <td th:text="${d.platillo}">Desayuno 1</td>
+                        <td th:text="${d.ingredientes}">Huevos, avena...</td>
+                        <td th:text="${d.semana}">1</td>
+                    </tr>
+
+                    <tr th:if="${#lists.isEmpty(dietaDetalle)}">
+                        <td colspan="5" class="has-text-centered muted">
+                            No tienes una dieta asignada todavía.
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <p class="muted is-size-7 mt-2">
+                Si cambian tus horarios o presupuesto, solicita una actualización de tu plan con el nutriólogo.
+            </p>
+        </div>
+
+    </div>
+</section>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const burgers = Array.from(document.querySelectorAll('.navbar-burger'));
+        burgers.forEach(b => b.addEventListener('click', () => {
+            const t = document.getElementById(b.dataset.target);
+            b.classList.toggle('is-active');
+            if (t) t.classList.toggle('is-active');
+        }));
+    });
+</script>
+</body>
+</html>

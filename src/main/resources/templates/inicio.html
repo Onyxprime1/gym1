@@ -1,50 +1,175 @@
 <!DOCTYPE html>
 <html lang="es" xmlns:th="http://www.thymeleaf.org">
 <head>
-    <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
     <title>DEBUG Gym — Panel del Cliente</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+
+    <link rel="stylesheet"
+          href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+
     <style>
-        :root{--bg:#0a0a0e;--ink:#f2f2f2;--muted:#b7b7c2;--accent:#ffc107;--card:#111118;--line:#1b1b25;--ok:#22c55e;--warn:#f59e0b;--danger:#ef4444}
+        :root{
+            --bg:#050509;
+            --ink:#f5f5f7;
+            --muted:#b7b7c2;
+            --accent:#ffc107;
+            --card:#111118;
+            --line:#1b1b25;
+            --ok:#22c55e;
+            --danger:#ef4444;
+        }
         html,body{background:var(--bg);color:var(--ink)}
-        .navbar{background:#0b0b12;border-bottom:1px solid rgba(255,255,255,.06)}
-        .brand{color:var(--accent);font-weight:900;letter-spacing:.6px}
-        .section{padding:2.75rem 1.25rem}
-        .cardx{background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:0 12px 28px rgba(0,0,0,.33)}
-        .kicker{color:var(--accent);font-weight:800;letter-spacing:.08em;text-transform:uppercase;font-size:.8rem}
-        .muted{color:var(--muted)}
-        .badge{display:inline-flex;align-items:center;gap:.4rem;border-radius:999px;padding:.35rem .7rem;font-weight:800;font-size:.8rem;border:1px solid var(--line);background:rgba(255,255,255,.02)}
-        .badge.ok{border-color:rgba(34,197,94,.35);color:#d1fadf}
-        .badge.warn{border-color:rgba(245,158,11,.35);color:#fff7d6}
-        .badge.danger{border-color:rgba(239,68,68,.35);color:#ffe1e1}
-        .btn-accent{background:var(--accent);border-color:var(--accent);color:#151515;font-weight:900;border-radius:12px}
-        .btn-ghost{background:transparent;border:2px solid var(--accent);color:var(--accent);font-weight:900;border-radius:12px}
-        .tile-app{display:flex;flex-direction:column;gap:.65rem;padding:1.2rem}
-        .tile-app .title{margin-bottom:.2rem}
-        .icon-round{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;background:#1a1a22;border:1px solid var(--line)}
-        .grid{display:grid;gap:1rem}
-        @media(min-width:769px){.grid{grid-template-columns:repeat(12,1fr)}}
-        .hover-up{transition:.2s transform ease,.2s box-shadow ease}
-        .hover-up:hover{transform:translateY(-3px);box-shadow:0 16px 34px rgba(0,0,0,.44)}
-        hr{background:var(--line);height:1px;border:none;margin:1rem 0}
-        .small{font-size:.9rem}
         a{color:var(--accent)}
+
+        .navbar{
+            background:#0b0b12;
+            border-bottom:1px solid rgba(255,255,255,.08);
+        }
+        .brand{
+            color:var(--accent);
+            font-weight:900;
+            letter-spacing:.6px;
+        }
+
+        .section{padding:2.5rem 1.25rem}
+
+        .cardx{
+            background:var(--card);
+            border-radius:16px;
+            border:1px solid var(--line);
+            box-shadow:0 14px 32px rgba(0,0,0,.45);
+        }
+
+        .kicker{
+            color:var(--accent);
+            font-weight:800;
+            letter-spacing:.08em;
+            text-transform:uppercase;
+            font-size:.8rem;
+        }
+
+        .muted{color:var(--muted)}
+
+        .badge{
+            display:inline-flex;
+            align-items:center;
+            gap:.35rem;
+            border-radius:999px;
+            padding:.25rem .7rem;
+            font-size:.8rem;
+            border:1px solid var(--line);
+            background:rgba(255,255,255,.02);
+        }
+        .badge.ok{
+            border-color:rgba(34,197,94,.5);
+            color:#bbf7d0;
+            background:rgba(34,197,94,.15);
+        }
+        .badge.danger{
+            border-color:rgba(239,68,68,.6);
+            color:#fecaca;
+            background:rgba(239,68,68,.18);
+        }
+
+        .btn-accent{
+            background:var(--accent);
+            border-color:var(--accent);
+            color:#111;
+            font-weight:800;
+            border-radius:12px;
+        }
+        .btn-ghost{
+            background:transparent;
+            border:2px solid var(--accent);
+            color:var(--accent);
+            font-weight:800;
+            border-radius:12px;
+        }
+
+        .tile-app{
+            padding:1.4rem 1.6rem;
+            display:flex;
+            flex-direction:column;
+            gap:.6rem;
+        }
+        .icon-round{
+            width:40px;height:40px;
+            border-radius:50%;
+            display:grid;
+            place-items:center;
+            background:#1b1b25;
+            border:1px solid #2a2a3a;
+        }
+        .hover-up{
+            transition:.2s transform ease,.2s box-shadow ease;
+        }
+        .hover-up:hover{
+            transform:translateY(-3px);
+            box-shadow:0 18px 38px rgba(0,0,0,.6);
+        }
+
+        .small{font-size:.9rem}
+
+        /* Botón deshabilitado por membresía vencida */
+        .disabled-btn{
+            opacity:.35!important;
+            cursor:not-allowed!important;
+            pointer-events:none!important;
+        }
+
+        /* Tooltip */
+        .tooltip{position:relative;display:inline-block;}
+        .tooltip .tooltiptext{
+            visibility:hidden;
+            width:190px;
+            background-color:#000000d0;
+            color:#fff;
+            text-align:center;
+            border-radius:6px;
+            padding:6px;
+            position:absolute;
+            z-index:1;
+            bottom:120%;
+            left:50%;
+            margin-left:-95px;
+            opacity:0;
+            transition:opacity .3s;
+            font-size:.75rem;
+        }
+        .tooltip:hover .tooltiptext{
+            visibility:visible;
+            opacity:1;
+        }
+
+        .notice-premium{
+            background:#1b1508;
+            border:1px solid #facc15;
+            color:#fde68a;
+        }
     </style>
 </head>
 <body>
+
+<!-- NAVBAR -->
 <nav class="navbar" role="navigation">
     <div class="container">
         <div class="navbar-brand">
-            <a class="navbar-item brand" href="/">DEBUG Gym</a>
-            <a role="button" class="navbar-burger" aria-label="menu" aria-expanded="false" data-target="navMain">
-                <span aria-hidden="true"></span><span aria-hidden="true"></span><span aria-hidden="true"></span>
+            <a class="navbar-item brand" href="/inicio">DEBUG Gym</a>
+            <a role="button" class="navbar-burger" aria-label="menu"
+               aria-expanded="false" data-target="navMain">
+                <span aria-hidden="true"></span>
+                <span aria-hidden="true"></span>
+                <span aria-hidden="true"></span>
             </a>
         </div>
+
         <div id="navMain" class="navbar-menu">
             <div class="navbar-end">
                 <div class="navbar-item">
-                    <span id="navPlan" class="badge" th:text="${planNivel}">—</span>
-                    <a id="btnSalir" class="button is-small btn-ghost ml-3" href="/login">Salir</a>
+                    <span class="badge"
+                          th:text="${planNivel}">Plan básico</span>
+                    <a class="button is-small btn-ghost ml-3" href="/login">Salir</a>
                 </div>
             </div>
         </div>
@@ -54,11 +179,17 @@
 <section class="section">
     <div class="container">
 
+        <!-- ENCABEZADO -->
         <div class="columns is-vcentered">
             <div class="column">
-                <span class="kicker">Bienvenido</span>
-                <h1 class="title is-3" th:text="'Hola, ' + ${nombre} + '.'">Hola, Atleta.</h1>
-                <p class="muted">Aquí ves tu estado de membresía, accesos rápidos y próximos pasos.</p>
+                <span class="kicker">Panel del cliente</span>
+                <h1 class="title is-3"
+                    th:text="'Hola, ' + ${nombre} + '.'">
+                    Hola, Atleta.
+                </h1>
+                <p class="muted">
+                    Aquí ves tu estado de membresía y accedes a tus rutinas, dietas, progreso y pagos.
+                </p>
             </div>
             <div class="column is-narrow">
                 <div id="chipMembresia"
@@ -70,12 +201,13 @@
             </div>
         </div>
 
-        <div id="alertEstado"
-             class="notification is-hidden"
+        <!-- ALERTA MEMBRESÍA -->
+        <div class="notification"
              th:class="'notification ' + (${vigente} ? 'is-hidden' : 'is-danger is-light')"
-             th:utext="'Tu membresía está vencida. <a href=&quot;/pagos&quot;><strong>Renueva ahora</strong></a>.'">
+             th:utext="'Tu membresía está vencida o inactiva. <a href=&quot;/pagos&quot;><strong>Renueva ahora</strong></a>.'">
         </div>
 
+        <!-- TARJETA ESTADO GENERAL -->
         <div class="cardx p-5 mb-5">
             <div class="columns">
                 <div class="column">
@@ -96,186 +228,156 @@
             </div>
         </div>
 
-        <style>
-            .disabled-btn {
-                opacity: 0.35 !important;
-                cursor: not-allowed !important;
-                pointer-events: none !important;
-            }
-            .tooltip {
-                position: relative;
-                display: inline-block;
-            }
-            .tooltip .tooltiptext {
-                visibility: hidden;
-                width: 180px;
-                background-color: #000000c0;
-                color: #fff;
-                text-align: center;
-                border-radius: 6px;
-                padding: 6px;
-                position: absolute;
-                z-index: 1;
-                bottom: 120%;
-                left: 50%;
-                margin-left: -90px;
-                opacity: 0;
-                transition: opacity 0.3s;
-                font-size: 0.75rem;
-            }
-            .tooltip:hover .tooltiptext {
-                visibility: visible;
-                opacity: 1;
-            }
-        </style>
-
-        <div class="grid">
+        <!-- GRID DE MÓDULOS -->
+        <div class="columns is-multiline is-variable is-5">
 
             <!-- RUTINAS -->
-            <div class="cardx hover-up tile-app" style="grid-column:span 6;">
-                <div class="is-flex is-align-items-center is-justify-content-space-between">
-                    <div class="is-flex is-align-items-center" style="gap:.8rem">
-                        <div class="icon-round">🏋️</div>
-                        <div>
-                            <h4 class="title is-5">Rutinas</h4>
-                            <p class="muted small"
-                               th:text="${planNivel.contains('Premium')} ?
-                       'Rutinas personalizadas asignadas por tu instructor.' :
-                       'Acceso a rutinas estándar y creador local.'">
-                                —
-                            </p>
+            <div class="column is-12-tablet is-6-desktop">
+                <div class="cardx hover-up tile-app">
+                    <div class="is-flex is-align-items-center is-justify-content-space-between">
+                        <div class="is-flex is-align-items-center" style="gap:.8rem">
+                            <div class="icon-round">🏋️</div>
+                            <div>
+                                <h4 class="title is-5 mb-1">Rutinas</h4>
+                                <p class="muted small"
+                                   th:text="${planNivel.contains('Premium')} ?
+                                            'Rutinas personalizadas asignadas por tu instructor.' :
+                                            'Acceso a rutinas estándar según tu plan.'">
+                                    —
+                                </p>
+                                <p class="muted small"
+                                   th:text="${rutinasCount} + ' rutinas disponibles'">
+                                    0 rutinas disponibles
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="tooltip">
+                            <a class="button btn-ghost"
+                               th:href="${vigente} ? '/rutinas' : null"
+                               th:classappend="${vigente} ? '' : ' disabled-btn'">
+                                Abrir
+                            </a>
+                            <span class="tooltiptext" th:if="${!vigente}">
+                                Necesitas una membresía activa para acceder.
+                            </span>
                         </div>
                     </div>
-
-                    <div class="tooltip">
-                        <a class="button btn-ghost"
-                           th:href="${vigente} ? '/rutinas' : null"
-                           th:classappend="${vigente} ? '' : ' disabled-btn'"
-                        >Abrir</a>
-
-                        <span class="tooltiptext"
-                              th:if="${!vigente}">
-                    Necesitas una membresía activa para acceder.
-                </span>
-                    </div>
-                </div>
-
-                <hr>
-
-                <div class="is-flex is-flex-wrap-wrap" style="gap:.5rem">
-                    <span class="badge ok" th:if="${planNivel.contains('Premium')}">Personalizadas</span>
-                    <span class="badge" th:if="${planNivel.contains('Premium')}">Progresión semanal</span>
-                    <span class="badge" th:if="${!planNivel.contains('Premium')}">Estándar</span>
-                    <span class="badge" th:if="${!planNivel.contains('Premium')}">Creador local</span>
-                    <span class="badge" th:text="${rutinasCount} + ' rutinas'">0 rutinas</span>
                 </div>
             </div>
 
-            <!-- DIETAS -->
-            <div class="cardx hover-up tile-app" style="grid-column:span 6;">
-                <div class="is-flex is-align-items-center is-justify-content-space-between">
-                    <div class="is-flex is-align-items-center" style="gap:.8rem">
-                        <div class="icon-round">🥗</div>
-                        <div>
-                            <h4 class="title is-5">Nutrición</h4>
-                            <p class="muted small"
-                               th:text="${planNivel.contains('Premium')} ?
-                       'Plan de alimentación personalizado por nutriólogo.' :
-                       'Menús estándar sugeridos.'">
-                                —
-                            </p>
+            <!-- NUTRICIÓN -->
+            <div class="column is-12-tablet is-6-desktop">
+                <div class="cardx hover-up tile-app">
+                    <div class="is-flex is-align-items-center is-justify-content-space-between">
+                        <div class="is-flex is-align-items-center" style="gap:.8rem">
+                            <div class="icon-round">🥗</div>
+                            <div>
+                                <h4 class="title is-5 mb-1">Nutrición</h4>
+                                <p class="muted small"
+                                   th:text="${planNivel.contains('Premium')} ?
+                                            'Plan de alimentación personalizado por nutriólogo.' :
+                                            'Menús estándar sugeridos según tu objetivo.'">
+                                    —
+                                </p>
+                                <p class="muted small"
+                                   th:text="${dietasCount} + ' dietas disponibles'">
+                                    0 dietas disponibles
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="tooltip">
+                            <a class="button btn-ghost"
+                               th:href="${vigente} ? '/dietas' : null"
+                               th:classappend="${vigente} ? '' : ' disabled-btn'">
+                                Abrir
+                            </a>
+                            <span class="tooltiptext" th:if="${!vigente}">
+                                Necesitas una membresía activa para acceder.
+                            </span>
                         </div>
                     </div>
-
-                    <div class="tooltip">
-                        <a class="button btn-ghost"
-                           th:href="${vigente} ? '/dietas' : null"
-                           th:classappend="${vigente} ? '' : ' disabled-btn'"
-                        >Abrir</a>
-
-                        <span class="tooltiptext"
-                              th:if="${!vigente}">
-                    Necesitas una membresía activa para acceder.
-                </span>
-                    </div>
-                </div>
-
-                <hr>
-
-                <div class="is-flex is-flex-wrap-wrap" style="gap:.5rem">
-                    <span class="badge ok" th:if="${planNivel.contains('Premium')}">Personalizadas</span>
-                    <span class="badge" th:if="${planNivel.contains('Premium')}">Preferencias & presupuesto</span>
-                    <span class="badge" th:if="${!planNivel.contains('Premium')}">Menús estándar</span>
-                    <span class="badge" th:text="${dietasCount} + ' dietas'">0 dietas</span>
                 </div>
             </div>
 
             <!-- PROGRESO -->
-            <div class="cardx hover-up tile-app" style="grid-column:span 6;">
-                <div class="is-flex is-align-items-center is-justify-content-space-between">
-                    <div class="is-flex is-align-items-center" style="gap:.8rem">
-                        <div class="icon-round">📈</div>
-                        <div>
-                            <h4 class="title is-5">Progreso</h4>
-                            <p class="muted small">Registra peso, medidas y % de grasa.</p>
+            <div class="column is-12-tablet is-6-desktop">
+                <div class="cardx hover-up tile-app">
+                    <div class="is-flex is-align-items-center is-justify-content-space-between">
+                        <div class="is-flex is-align-items-center" style="gap:.8rem">
+                            <div class="icon-round">📈</div>
+                            <div>
+                                <h4 class="title is-5 mb-1">Progreso</h4>
+                                <p class="muted small">
+                                    Registra tu peso, medidas corporales y % de grasa para ver tu evolución.
+                                </p>
+                            </div>
                         </div>
-                    </div>
 
-                    <div class="tooltip">
-                        <a class="button btn-ghost"
-                           th:href="${vigente} ? '/progreso' : null"
-                           th:classappend="${vigente} ? '' : ' disabled-btn'"
-                        >Abrir</a>
-
-                        <span class="tooltiptext"
-                              th:if="${!vigente}">
-                    Necesitas una membresía activa para acceder.
-                </span>
+                        <div class="tooltip">
+                            <a class="button btn-ghost"
+                               th:href="${vigente} ? '/progreso' : null"
+                               th:classappend="${vigente} ? '' : ' disabled-btn'">
+                                Abrir
+                            </a>
+                            <span class="tooltiptext" th:if="${!vigente}">
+                                Activa tu membresía para registrar tu progreso.
+                            </span>
+                        </div>
                     </div>
                 </div>
             </div>
 
             <!-- PAGOS (SIEMPRE ACTIVO) -->
-            <div class="cardx hover-up tile-app" style="grid-column:span 6;">
-                <div class="is-flex is-align-items-center is-justify-content-space-between">
-                    <div class="is-flex is-align-items-center" style="gap:.8rem">
-                        <div class="icon-round">💳</div>
-                        <div>
-                            <h4 class="title is-5">Pagos</h4>
-                            <p class="muted small">Consulta tu historial, estado actual o renueva tu plan.</p>
+            <div class="column is-12-tablet is-6-desktop">
+                <div class="cardx hover-up tile-app">
+                    <div class="is-flex is-align-items-center is-justify-content-space-between">
+                        <div class="is-flex is-align-items-center" style="gap:.8rem">
+                            <div class="icon-round">💳</div>
+                            <div>
+                                <h4 class="title is-5 mb-1">Pagos</h4>
+                                <p class="muted small">
+                                    Consulta tu historial de pagos, estado actual y renueva tu plan.
+                                </p>
+                            </div>
                         </div>
-                    </div>
 
-                    <a class="button btn-ghost" href="/pagos">Abrir</a>
+                        <a class="button btn-ghost" href="/pagos">Abrir</a>
+                    </div>
                 </div>
             </div>
-
         </div>
 
-
-        <div id="notaPremium" class="notification is-warning is-light mt-5"
+        <!-- NOTA PREMIUM -->
+        <div class="notification notice-premium mt-5"
              th:classappend="${planNivel.contains('Premium')} ? ' is-hidden' : ''">
-            <strong>Contenido Premium:</strong> Las rutinas y dietas personalizadas requieren membresía <em>El Gran Machote</em> activa al día.
+            <strong>Contenido Premium:</strong>
+            Las rutinas y dietas totalmente personalizadas requieren la membresía
+            <em>El Gran Machote</em> activa al día.
         </div>
 
     </div>
 </section>
 
-<footer class="footer" style="background:#0b0b12;border-top:1px solid rgba(255,255,255,.06)">
+<footer class="footer"
+        style="background:#0b0b12;border-top:1px solid rgba(255,255,255,.06)">
     <div class="content has-text-centered">
-        <p class="muted">Proyecto Académico — Plataforma de Gimnasio · 2025</p>
+        <p class="muted">DEBUG Gym · Panel del Cliente · 2025</p>
     </div>
 </footer>
 
 <script>
-    // burger
+    // burger menú móvil
     document.addEventListener('DOMContentLoaded', () => {
-        const burgers=[...document.querySelectorAll('.navbar-burger')];
-        burgers.forEach(b=>b.addEventListener('click',()=> {
-            const t=document.getElementById(b.dataset.target);
-            b.classList.toggle('is-active'); if(t) t.classList.toggle('is-active');
+        const burgers = Array.from(document.querySelectorAll('.navbar-burger'));
+        burgers.forEach(b => b.addEventListener('click', () => {
+            const t = document.getElementById(b.dataset.target);
+            b.classList.toggle('is-active');
+            if (t) t.classList.toggle('is-active');
         }));
     });
 </script>
+
 </body>
 </html>
