@@ -15,22 +15,24 @@
         .muted{color:var(--muted)}
         .rutina-block{margin-bottom:1rem;padding:0;border-radius:10px;overflow:hidden}
         .rutina-header{display:flex;justify-content:space-between;align-items:flex-start;padding:1rem;background:rgba(255,255,255,0.01)}
-        .rutina-body{padding:0 1rem 1rem 1rem}
+        .rutina-body{padding:0 1rem 1rem 1rem; display:none;}
+        .rutina-body.open{display:block;}
         .rutina-title{font-weight:700;font-size:1.05rem}
         table.detalles{width:100%;border-collapse:collapse;margin-top:.5rem}
         table.detalles th, table.detalles td{padding:.5rem .6rem;border-bottom:1px solid rgba(255,255,255,.02);text-align:left}
         table.detalles thead th{color:var(--muted);font-weight:700;font-size:.9rem}
         .actions { display:flex; gap:.5rem; align-items:center }
-        .small-btn{padding:.35rem .55rem;border-radius:6px;text-decoration:none}
-        .btn-edit{background:#485fc7;color:#fff;border:none}
+        .small-btn{padding:.35rem .55rem;border-radius:6px;text-decoration:none;cursor:pointer}
         .btn-delete{background:#ff6b81;color:#fff;border:none}
         .btn-assign{background:#3aa0ff;color:#fff;border:none}
         .note { color:var(--muted); font-size:.95rem; margin-top:.5rem; }
         .search { width:100%;padding:.6rem;border-radius:8px;border:1px solid #262626;background:#0f0f14;color:#fff }
         .form-inline { display:flex; gap:.5rem; flex-wrap:wrap; align-items:center; margin-top:.5rem }
         input.small { padding:.4rem .6rem; border-radius:6px; background:#0f0f14; border:1px solid #262626; color:#fff }
-        input.num { width:90px; padding:.35rem .5rem; border-radius:6px; background:#0f0f14; border:1px solid #262626; color:#fff; }
-        .editable { border:1px dashed rgba(255,255,255,.03); padding:.35rem .5rem; border-radius:6px; background:transparent; color:var(--ink) }
+        input.num { width:90px; padding:.35rem .5rem; border-radius:6px; background:#0f0f14; border:1px solid #262626; color:#fff }
+        .field-with-btn { display:flex; align-items:center; gap:.4rem; }
+        .header-actions { display:flex; gap:.5rem; align-items:center; }
+        .save-button { background:#485fc7; color:#fff; border:none; padding:.35rem .55rem; border-radius:6px; }
     </style>
 </head>
 <body>
@@ -54,20 +56,25 @@
 
         <div th:if="${#lists.isEmpty(rutinasViews)}" class="cardx muted">No hay rutinas registradas.</div>
 
+        <!-- Itera rutinasViews -->
         <div th:each="rv : ${rutinasViews}" class="rutina-block cardx" th:attr="data-text=${rv.searchText}">
-            <div class="rutina-header">
+            <div class="rutina-header" th:attr="data-rid=${rv.rutina.id}">
                 <div style="max-width:78%;">
                     <div>
-                        <span class="rutina-title" th:text="${rv.rutina.nombre}" th:attr="data-name=${rv.rutina.nombre}">Nombre rutina</span>
+                        <span class="rutina-title" th:text="${rv.rutina.nombre}">Nombre rutina</span>
                     </div>
-                    <div class="muted" th:text="${rv.rutina.descripcion}" th:attr="data-desc=${rv.rutina.descripcion}">Descripción</div>
+                    <div class="muted" th:text="${rv.rutina.descripcion}">Descripción</div>
                 </div>
 
                 <div class="actions">
-                    <button type="button" class="small-btn" onclick="toggleDetails(this)">Abrir</button>
-                    <button type="button" class="small-btn" onclick="toggleEdit(this)">Editar</button>
-                    <button type="submit" class="small-btn btn-edit" th:attr="form=|form-detalles-${rv.rutina.id}|">Guardar</button>
+                    <!-- Abrir / Cerrar -->
+                    <button type="button" class="small-btn btn-open" onclick="toggleDetails(this)">Abrir</button>
 
+                    <!-- BOTÓN EDIT (único): envía el form de detalles como POST. Usamos attribute form para apuntar al formulario dentro del body -->
+                    <button type="submit" class="small-btn btn-edit"
+                            th:attr="form=${'form-detalles-' + rv.rutina.id}">Editar</button>
+
+                    <!-- Eliminar RUTINA completa (POST) - confirm inline -->
                     <form th:action="@{|/instructor/rutinas/eliminar/${rv.rutina.id}|}" method="post" style="display:inline" onsubmit="return confirm('¿Eliminar rutina?');">
                         <input type="hidden" th:if="${_csrf != null}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
                         <button type="submit" class="small-btn btn-delete">Eliminar</button>
@@ -75,8 +82,11 @@
                 </div>
             </div>
 
+            <!-- cuerpo con el form de detalles; el botón de la cabecera usa form="form-detalles-..." para submit -->
             <div class="rutina-body" style="display:none">
-                <form th:id="${'form-detalles-' + rv.rutina.id}" th:action="@{|/instructor/rutinas/${rv.rutina.id}/detalles/guardar|}" method="post">
+                <form th:id="${'form-detalles-' + rv.rutina.id}"
+                      th:action="@{|/instructor/rutinas/${rv.rutina.id}/detalles/guardar|}"
+                      method="post">
                     <input type="hidden" th:if="${_csrf != null}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
                     <input type="hidden" name="nombre" th:value="${rv.rutina.nombre}"/>
                     <input type="hidden" name="descripcion" th:value="${rv.rutina.descripcion}"/>
@@ -94,17 +104,17 @@
                         </tr>
                         </thead>
                         <tbody>
-                        <tr th:each="d, iterStat : ${rv.detalles}">
+                        <!-- Importante: por fila, los inputs tienen nombres idénticos y en el mismo orden -->
+                        <tr th:each="d : ${rv.detalles}">
                             <td th:text="${d.ejercicioNombre}">Ejercicio</td>
 
                             <td>
                                 <input type="hidden" name="ejercicioId" th:value="${d.ejercicioId}" />
-                                <input type="hidden" name="dia" th:value="${d.diaSemana}" />
-                                <span th:text="${d.diaSemana != '' ? d.diaSemana : '—'}">Lunes</span>
+                                <input type="hidden" name="detalleId" th:value="${d.detalleId}" />
+                                <input class="small" type="text" name="dia" th:value="${d.diaSemana}" />
                             </td>
 
                             <td>
-                                <input type="hidden" name="detalleId" th:value="${d.detalleId}" />
                                 <input class="num" type="number" name="series" min="0" th:value="${d.series != null ? d.series : ''}" />
                             </td>
 
@@ -113,26 +123,18 @@
                             </td>
 
                             <td>
-                                <div th:if="${d.detalleId != null}">
-                                    <form th:action="@{|/instructor/rutinas/${rv.rutina.id}/detalles/eliminar/${d.detalleId}|}" method="post" style="display:inline" onsubmit="return confirm('¿Eliminar ejercicio de la rutina?');">
-                                        <input type="hidden" th:if="${_csrf != null}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
-                                        <button class="small-btn btn-delete" type="submit">Eliminar</button>
-                                    </form>
-                                </div>
-                                <div th:if="${d.detalleId == null}">
-                                    <form th:action="@{|/instructor/rutinas/${rv.rutina.id}/detalles/eliminar|}" method="post" style="display:inline" onsubmit="return confirm('¿Eliminar ejercicio de la rutina?');">
-                                        <input type="hidden" th:if="${_csrf != null}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
-                                        <input type="hidden" name="ejercicioId" th:value="${d.ejercicioId}" />
-                                        <input type="hidden" name="diaSemana" th:value="${d.diaSemana}" />
-                                        <button class="small-btn btn-delete" type="submit">Eliminar</button>
-                                    </form>
-                                </div>
+                                <!-- Eliminar detalle: POST al endpoint existente -->
+                                <form th:action="@{|/instructor/rutinas/${rv.rutina.id}/detalles/eliminar/${d.detalleId}|}" method="post" style="display:inline" onsubmit="return confirm('¿Eliminar ejercicio de la rutina?');">
+                                    <input type="hidden" th:if="${_csrf != null}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                                    <button class="small-btn btn-delete" type="submit">Eliminar</button>
+                                </form>
                             </td>
                         </tr>
                         </tbody>
                     </table>
                 </form>
 
+                <!-- Agregar nuevo detalle (no modificado) -->
                 <div style="margin-top:0.75rem">
                     <form th:action="@{|/instructor/rutinas/${rv.rutina.id}/detalles/agregar|}" method="post" class="form-inline">
                         <input type="hidden" th:if="${_csrf != null}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
@@ -158,61 +160,31 @@
 </main>
 
 <script>
+    // Solo JS mínimo: abrir/ cerrar detalles y filtrado. No intercepta submits.
     function toggleDetails(btn) {
         const header = btn.closest('.rutina-header');
-        const block = header.nextElementSibling;
-        if (!block) return;
-        block.style.display = (block.style.display === 'none' || block.style.display === '') ? 'block' : 'none';
-        btn.textContent = (block.style.display === 'block') ? 'Cerrar' : 'Abrir';
-    }
-
-    function toggleEdit(btn) {
-        const header = btn.closest('.rutina-header');
-        const titleSpan = header.querySelector('.rutina-title');
-        const descSpan = header.querySelector('.muted');
         const body = header.nextElementSibling;
         if (!body) return;
-        const form = body.querySelector('form');
-        if (!form) return;
-        const hiddenNombre = form.querySelector('input[name="nombre"]');
-        const hiddenDescripcion = form.querySelector('input[name="descripcion"]');
-        if (header.dataset.editing === '1') {
-            const inputNombre = header.querySelector('input[name="nombre_tmp"]');
-            const textareaDesc = header.querySelector('textarea[name="descripcion_tmp"]');
-            if (inputNombre) {
-                const v = inputNombre.value;
-                titleSpan.textContent = v;
-                if (hiddenNombre) hiddenNombre.value = v;
-                inputNombre.remove();
+        const isOpen = body.classList.contains('open');
+        // Cerrar otros
+        document.querySelectorAll('.rutina-body.open').forEach(b => {
+            if (b !== body) {
+                b.classList.remove('open');
+                b.style.display = 'none';
+                const h = b.previousElementSibling;
+                const ob = h && h.querySelector('.btn-open');
+                if (ob) ob.textContent = 'Abrir';
             }
-            if (textareaDesc) {
-                const v = textareaDesc.value;
-                descSpan.textContent = v;
-                if (hiddenDescripcion) hiddenDescripcion.value = v;
-                textareaDesc.remove();
-            }
-            header.dataset.editing = '0';
-            btn.textContent = 'Editar';
+        });
+
+        if (isOpen) {
+            body.classList.remove('open');
+            body.style.display = 'none';
+            btn.textContent = 'Abrir';
         } else {
-            const currentName = titleSpan.getAttribute('data-name') || titleSpan.textContent;
-            const currentDesc = descSpan.getAttribute('data-desc') || descSpan.textContent;
-            const inputNombre = document.createElement('input');
-            inputNombre.name = 'nombre_tmp';
-            inputNombre.className = 'editable';
-            inputNombre.value = currentName;
-            titleSpan.parentNode.insertBefore(inputNombre, titleSpan.nextSibling);
-            const textarea = document.createElement('textarea');
-            textarea.name = 'descripcion_tmp';
-            textarea.className = 'editable';
-            textarea.rows = 2;
-            textarea.textContent = currentDesc === '—' ? '' : currentDesc;
-            descSpan.parentNode.insertBefore(textarea, descSpan.nextSibling);
-            if (hiddenNombre) hiddenNombre.value = inputNombre.value;
-            if (hiddenDescripcion) hiddenDescripcion.value = textarea.value;
-            inputNombre.addEventListener('input', function(){ if (hiddenNombre) hiddenNombre.value = this.value; });
-            textarea.addEventListener('input', function(){ if (hiddenDescripcion) hiddenDescripcion.value = this.value; });
-            header.dataset.editing = '1';
-            btn.textContent = 'Cancelar';
+            body.classList.add('open');
+            body.style.display = 'block';
+            btn.textContent = 'Cerrar';
         }
     }
 
@@ -223,6 +195,9 @@
             node.style.display = text.indexOf(q) !== -1 ? '' : 'none';
         });
     }
+
+    // ensure form-submit buttons that reference forms by id will work in older browsers,
+    // but modern browsers support form attribute — no extra JS needed.
 </script>
 </body>
 </html>
