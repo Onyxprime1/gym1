@@ -1,10 +1,136 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <title>Title</title>
+    <title>DEBUG Gym — Nutriólogos</title>
+
+    <link rel="stylesheet"
+          href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+
+    <style>
+        :root{
+            --bg:#050509;
+            --ink:#f5f5f7;
+            --muted:#b7b7c2;
+            --accent:#ffc107;
+            --card:#111118;
+            --line:#1b1b25;
+            --ok:#22c55e;
+            --danger:#ef4444;
+        }
+        html,body{background:var(--bg);color:var(--ink)}
+        .title, .subtitle, h1, h2, h3 {color:var(--ink)}
+        .cardx{
+            background:var(--card);
+            border-radius:14px;
+            border:1px solid var(--line);
+            padding:1.5rem;
+            box-shadow:0 12px 28px rgba(0,0,0,.35);
+        }
+        .badge{
+            padding:.25rem .6rem;
+            border-radius:999px;
+            font-size:.75rem;
+            font-weight:600;
+        }
+        .badge-ok{
+            background:rgba(34,197,94,.15);
+            color:#bbf7d0;
+        }
+        .badge-off{
+            background:rgba(148,163,184,.25);
+            color:#e2e8f0;
+        }
+        .tag-summary{
+            margin-right:.35rem;
+        }
+    </style>
 </head>
 <body>
+
+<section class="section">
+    <div class="container">
+
+        <!-- TÍTULO -->
+        <h1 class="title is-3 has-text-warning">Nutriólogos</h1>
+        <p class="subtitle" style="color:var(--muted)">
+            Personal de nutrición, especialidades y carga de planes asignados.
+        </p>
+
+        <!-- RESUMEN -->
+        <div class="mb-4">
+            <span class="tag is-dark tag-summary"
+                  th:text="'Total nutriólogos: ' + ${totalNutriologos}">
+                Total nutriólogos: 0
+            </span>
+            <span class="tag is-link tag-summary"
+                  th:text="'Con usuario de acceso: ' + ${totalConUsuario}">
+                Con usuario de acceso: 0
+            </span>
+            <span class="tag is-warning tag-summary"
+                  th:text="'Sin usuario: ' + ${totalSinUsuario}">
+                Sin usuario: 0
+            </span>
+            <span class="tag is-success tag-summary"
+                  th:text="'Dietas registradas: ' + ${totalDietas}">
+                Dietas registradas: 0
+            </span>
+        </div>
+
+        <!-- TABLA -->
+        <div class="cardx">
+            <div class="table-container">
+                <table class="table is-fullwidth is-striped is-dark">
+                    <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Nombre</th>
+                        <th>Correo usuario</th>
+                        <th>Especialidad</th>
+                        <th>Dietas asignadas</th>
+                        <th>Estado vínculo</th>
+                    </tr>
+                    </thead>
+
+                    <tbody>
+                    <tr th:each="n : ${nutriologos}">
+                        <td th:text="${n.id}">1</td>
+                        <td th:text="${n.nombre}">Nombre Nutriólogo</td>
+                        <td th:text="${n.correo != null ? n.correo : '—'}">
+                            nutri@ejemplo.com
+                        </td>
+                        <td th:text="${n.especialidad != null ? n.especialidad : '—'}">
+                            Nutrición deportiva
+                        </td>
+                        <td th:text="${n.totalDietas}">3</td>
+                        <td>
+                            <span th:if="${n.tieneUsuario}"
+                                  class="badge badge-ok">
+                                Con usuario
+                            </span>
+                            <span th:if="${!n.tieneUsuario}"
+                                  class="badge badge-off">
+                                Sin usuario
+                            </span>
+                        </td>
+                    </tr>
+
+                    <tr th:if="${#lists.isEmpty(nutriologos)}">
+                        <td colspan="6" class="has-text-centered" style="color:var(--muted)">
+                            No hay nutriólogos registrados.
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="mt-4">
+                <a href="/admin" class="button is-light">Volver al panel admin</a>
+            </div>
+        </div>
+
+    </div>
+</section>
 
 </body>
 </html>

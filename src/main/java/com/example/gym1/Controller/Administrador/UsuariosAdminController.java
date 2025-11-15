@@ -1,7 +1,7 @@
 package com.example.gym1.Controller.Administrador;
 
-import com.example.gym1.Poo.Usuario;
 import com.example.gym1.Poo.Rol;
+import com.example.gym1.Poo.Usuario;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.transaction.Transactional;
@@ -18,120 +18,72 @@ public class UsuariosAdminController {
     @PersistenceContext
     private EntityManager em;
 
-    // ============================
-    // LISTAR USUARIOS
-    // ============================
+    // LISTAR
     @GetMapping
     public String listarUsuarios(Model model) {
-
         List<Usuario> usuarios = em.createQuery(
                 "SELECT u FROM Usuario u", Usuario.class
         ).getResultList();
 
-        model.addAttribute("usuarios", usuarios);
+        List<Rol> roles = em.createQuery(
+                "SELECT r FROM Rol r", Rol.class
+        ).getResultList();
 
+        model.addAttribute("usuarios", usuarios);
+        model.addAttribute("roles", roles);
         return "Administrador/usuarios";
     }
 
-
-    // ============================
-    // VER DETALLE DE USUARIO
-    // ============================
-    @GetMapping("/{id}")
-    public String verUsuario(@PathVariable Integer id, Model model) {
-
-        Usuario u = em.find(Usuario.class, id);
-        if (u == null) {
-            return "redirect:/admin/usuarios";
-        }
-
-        model.addAttribute("usuario", u);
-
-        return "Administrador/usuario_detalle";
-    }
-
-
-    // ============================
-    // FORMULARIO CREAR USUARIO
-    // ============================
-    @GetMapping("/nuevo")
-    public String nuevoUsuario(Model model) {
-        model.addAttribute("usuario", new Usuario());
-
-        List<Rol> roles = em.createQuery("SELECT r FROM Rol r", Rol.class).getResultList();
-        model.addAttribute("roles", roles);
-
-        return "Administrador/usuario_form";
-    }
-
-
-    // ============================
-    // GUARDAR USUARIO NUEVO
-    // ============================
-    @Transactional
-    @PostMapping("/guardar")
-    public String guardarUsuario(@ModelAttribute Usuario usuario) {
-
-        em.persist(usuario);
-        return "redirect:/admin/usuarios";
-    }
-
-
-    // ============================
-    // EDITAR USUARIO
-    // ============================
-    @GetMapping("/editar/{id}")
+    // EDITAR (cargar formulario)
+    @GetMapping("/{id}/editar")
     public String editarUsuario(@PathVariable Integer id, Model model) {
-
-        Usuario u = em.find(Usuario.class, id);
-        if (u == null) {
+        Usuario usuario = em.find(Usuario.class, id);
+        if (usuario == null) {
+            // si no existe, regreso a la lista
             return "redirect:/admin/usuarios";
         }
 
-        model.addAttribute("usuario", u);
+        List<Rol> roles = em.createQuery(
+                "SELECT r FROM Rol r", Rol.class
+        ).getResultList();
 
-        List<Rol> roles = em.createQuery("SELECT r FROM Rol r", Rol.class).getResultList();
+        model.addAttribute("usuario", usuario);
         model.addAttribute("roles", roles);
-
-        return "Administrador/usuario_form";
+        return "Administrador/usuario-form";  // nuevo html
     }
 
-
-    // ============================
-    // ACTUALIZAR USUARIO
-    // ============================
+    // GUARDAR CAMBIOS
+    @PostMapping("/{id}/guardar")
     @Transactional
-    @PostMapping("/actualizar/{id}")
-    public String actualizarUsuario(@PathVariable Integer id,
-                                    @ModelAttribute Usuario usuarioForm) {
-
-        Usuario u = em.find(Usuario.class, id);
-        if (u == null) {
+    public String guardarUsuario(
+            @PathVariable Integer id,
+            @RequestParam String nombre,
+            @RequestParam String correo,
+            @RequestParam Integer idRol
+    ) {
+        Usuario usuario = em.find(Usuario.class, id);
+        if (usuario == null) {
             return "redirect:/admin/usuarios";
         }
 
-        u.setNombre(usuarioForm.getNombre());
-        u.setCorreo(usuarioForm.getCorreo());
-        u.setContrasena(usuarioForm.getContrasena());
-        u.setRol(usuarioForm.getRol());
+        usuario.setNombre(nombre);
+        usuario.setCorreo(correo);
 
-        em.merge(u);
+        Rol rol = em.find(Rol.class, idRol);
+        usuario.setRol(rol);
+
+        em.merge(usuario);
         return "redirect:/admin/usuarios";
     }
 
-
-    // ============================
-    // ELIMINAR USUARIO
-    // ============================
+    // ELIMINAR
+    @PostMapping("/{id}/eliminar")
     @Transactional
-    @GetMapping("/eliminar/{id}")
     public String eliminarUsuario(@PathVariable Integer id) {
-
-        Usuario u = em.find(Usuario.class, id);
-        if (u != null) {
-            em.remove(u);
+        Usuario usuario = em.find(Usuario.class, id);
+        if (usuario != null) {
+            em.remove(usuario);
         }
-
         return "redirect:/admin/usuarios";
     }
 }

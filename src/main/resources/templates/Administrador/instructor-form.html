@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>DEBUG Gym — Instructor</title>
+    <link rel="stylesheet"
+          href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+
+    <style>
+        :root{
+            --bg:#050509;
+            --ink:#f5f5f7;
+            --muted:#b7b7c2;
+            --accent:#ffc107;
+            --card:#111118;
+            --line:#1f1f2b;
+        }
+
+        html, body{
+            background:var(--bg);
+            color:var(--ink);
+        }
+
+        .title{
+            color:var(--accent) !important;
+            font-weight:900;
+        }
+
+        .subtitle{
+            color:var(--muted) !important;
+        }
+
+        .cardx{
+            background:var(--card);
+            border-radius:16px;
+            border:1px solid var(--line);
+            box-shadow:0 14px 32px rgba(0,0,0,.55);
+            padding:1.5rem 1.75rem;
+        }
+
+        .btn-main{
+            background:var(--accent);
+            color:#111;
+            font-weight:800;
+            border:none;
+        }
+
+        .btn-main:hover{
+            filter:brightness(.93);
+        }
+
+        .btn-back{
+            background:#1f2933;
+            color:var(--ink);
+            border:1px solid var(--line);
+        }
+        .btn-back:hover{
+            background:var(--accent);
+            color:#111;
+        }
+
+        .label{
+            color:var(--ink);
+        }
+
+        .help{
+            color:var(--muted);
+        }
+    </style>
+</head>
+<body>
+
+<section class="section">
+    <div class="container" style="max-width: 640px;">
+
+        <h1 class="title"
+            th:text="${instructor.id} != null ? 'Editar instructor' : 'Nuevo instructor'">
+            Nuevo instructor
+        </h1>
+        <p class="subtitle">
+            Define el nombre, especialidad y (opcional) el usuario del sistema vinculado.
+        </p>
+
+        <div class="cardx">
+            <form th:action="@{/admin/instructores/guardar}" method="post">
+
+                <!-- Campo oculto para ID (en edición) -->
+                <input type="hidden" name="id" th:value="${instructor.id}"/>
+
+                <div class="field">
+                    <label class="label">Nombre</label>
+                    <div class="control">
+                        <input class="input"
+                               type="text"
+                               name="nombre"
+                               th:value="${instructor.nombre}"
+                               required>
+                    </div>
+                </div>
+
+                <div class="field">
+                    <label class="label">Especialidad</label>
+                    <div class="control">
+                        <input class="input"
+                               type="text"
+                               name="especialidad"
+                               th:value="${instructor.especialidad}">
+                    </div>
+                    <p class="help">Ej: Fuerza y Tonificación, Hipertrofia, Funcional, etc.</p>
+                </div>
+
+                <div class="field">
+                    <label class="label">Usuario vinculado (opcional)</label>
+                    <div class="control">
+                        <div class="select is-fullwidth">
+                            <select name="idUsuario">
+                                <option value="">— Sin usuario —</option>
+                                <option th:each="u : ${usuarios}"
+                                        th:value="${u.id}"
+                                        th:selected="${instructor.usuario != null and instructor.usuario.id == u.id}"
+                                        th:text="${u.correo}">
+                                </option>
+                            </select>
+                        </div>
+                    </div>
+                    <p class="help">
+                        Este usuario podrá iniciar sesión como instructor.
+                    </p>
+                </div>
+
+                <div class="field is-grouped mt-4">
+                    <div class="control">
+                        <button type="submit" class="button btn-main">
+                            Guardar
+                        </button>
+                    </div>
+                    <div class="control">
+                        <a href="/admin/instructores" class="button btn-back">
+                            Cancelar
+                        </a>
+                    </div>
+                </div>
+
+            </form>
+        </div>
+
+    </div>
+</section>
+
+</body>
+</html>

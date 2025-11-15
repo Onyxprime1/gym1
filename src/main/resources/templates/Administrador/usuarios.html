@@ -2,49 +2,156 @@
 <html lang="es" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <title>Listado de usuarios</title>
+    <title>DEBUG Gym — Administración de Usuarios</title>
     <link rel="stylesheet"
           href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+
+    <style>
+        :root{
+            --bg:#050509;
+            --ink:#f5f5f7;
+            --muted:#c5c5d2;
+            --accent:#ffc107;
+            --card:#111118;
+            --line:#1f1f2b;
+        }
+
+        html, body{
+            background: var(--bg);
+            color: var(--ink);
+        }
+
+        .title{
+            color: var(--accent) !important;
+            font-weight: 900;
+        }
+
+        .subtitle{
+            color: var(--muted) !important;
+        }
+
+        .table{
+            background: var(--card);
+            border-radius: 10px;
+        }
+
+        thead{
+            background: #0d0d15;
+        }
+
+        th, td{
+            color: var(--ink) !important;
+        }
+
+        tbody tr:nth-child(even){
+            background: #0c0c12 !important;
+        }
+
+        .btn-edit{
+            background: #3273dc;
+            color: #fff;
+            font-weight: 700;
+        }
+        .btn-edit:hover{
+            filter: brightness(1.1);
+        }
+
+        .btn-del{
+            background: #e63946;
+            color: #fff;
+            font-weight: 700;
+        }
+        .btn-del:hover{
+            filter: brightness(1.1);
+        }
+
+        .btn-back{
+            background: #1c1c25;
+            border: 1px solid var(--accent);
+            color: var(--ink);
+        }
+        .btn-back:hover{
+            background: var(--accent);
+            color: #111;
+        }
+
+    </style>
 </head>
-<body class="has-background-dark has-text-light">
+
+<body>
+
 <section class="section">
     <div class="container">
-        <h1 class="title has-text-warning">Usuarios</h1>
-        <p class="subtitle has-text-grey-light">
-            Prueba sencilla: leer usuarios desde la BD.
+
+        <h1 class="title">Usuarios</h1>
+        <p class="subtitle">
+            Administración básica de usuarios (ver, editar rol, eliminar).
         </p>
 
-        <div class="table-container">
-            <table class="table is-striped is-fullwidth is-dark">
+        <div class="table-container mt-4">
+            <table class="table is-striped is-fullwidth">
                 <thead>
                 <tr>
                     <th>ID</th>
                     <th>Nombre</th>
                     <th>Correo</th>
-                    <th>Rol (id_rol)</th>
+                    <th>Rol</th>
+                    <th class="has-text-centered">Acciones</th>
                 </tr>
                 </thead>
+
                 <tbody>
                 <tr th:each="u : ${usuarios}">
                     <td th:text="${u.id}"></td>
                     <td th:text="${u.nombre}"></td>
                     <td th:text="${u.correo}"></td>
-                    <td th:text="${u.rol != null ? u.rol.nombre : 'Sin rol'}"></td>
+
+                    <td>
+                        <span th:if="${u.rol != null}"
+                              style="color: var(--accent); font-weight:700;">
+                            <span th:text="${u.rol.nombre}">Cliente</span>
+                        </span>
+
+                        <span th:if="${u.rol == null}"
+                              style="color:#e63946; font-weight:700;">
+                            Sin rol
+                        </span>
+                    </td>
+
+                    <td class="has-text-centered">
+
+                        <a th:href="@{'/admin/usuarios/' + ${u.id} + '/editar'}"
+                           class="button is-small btn-edit">
+                            Editar
+                        </a>
+
+                        <form th:action="@{'/admin/usuarios/' + ${u.id} + '/eliminar'}"
+                              method="post"
+                              style="display:inline"
+                              onsubmit="return confirm('¿Seguro que deseas eliminar este usuario?');">
+
+                            <button type="submit" class="button is-small btn-del">
+                                Eliminar
+                            </button>
+                        </form>
+
+                    </td>
                 </tr>
 
-
-
                 <tr th:if="${#lists.isEmpty(usuarios)}">
-                    <td colspan="4" class="has-text-centered">
+                    <td colspan="5" class="has-text-centered" style="color:var(--muted);">
                         No hay usuarios en la base de datos.
                     </td>
                 </tr>
                 </tbody>
+
             </table>
         </div>
 
-        <a href="/" class="button is-light">Volver al inicio</a>
+        <a href="/admin" class="button btn-back mt-3">⟵ Volver al panel admin</a>
+
     </div>
 </section>
+
 </body>
 </html>

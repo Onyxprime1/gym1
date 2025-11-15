@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Editar usuario</title>
+    <link rel="stylesheet"
+          href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+
+    <style>
+        :root{
+            --bg:#050509;
+            --ink:#f5f5f7;
+            --muted:#c5c5d2;
+            --accent:#ffc107;
+            --card:#111118;
+            --line:#1f1f2b;
+            --danger:#e63946;
+        }
+
+        html, body{
+            background: var(--bg);
+            color: var(--ink);
+        }
+
+        .title{
+            color: var(--accent) !important;
+            font-weight: 900;
+        }
+
+        label{
+            color: var(--ink) !important;
+            font-weight: 600;
+        }
+
+        input, select{
+            background: #0f0f18 !important;
+            color: var(--ink) !important;
+            border: 1px solid var(--line) !important;
+        }
+
+        input:focus, select:focus{
+            border-color: var(--accent) !important;
+            box-shadow: 0 0 6px rgba(255,193,7,.4) !important;
+        }
+
+        .btn-save{
+            background: var(--accent);
+            color: #111;
+            font-weight: 800;
+            border:none;
+        }
+        .btn-save:hover{
+            filter: brightness(.92);
+        }
+
+        .btn-cancel{
+            background: #1c1c25;
+            color: var(--ink);
+            border:1px solid var(--line);
+        }
+        .btn-cancel:hover{
+            background: var(--accent);
+            color:#111;
+        }
+
+        .cardx{
+            background: var(--card);
+            border:1px solid var(--line);
+            border-radius:12px;
+            padding: 2rem;
+            box-shadow: 0 12px 28px rgba(0,0,0,.4);
+        }
+    </style>
+</head>
+
+<body>
+
+<section class="section">
+    <div class="container" style="max-width: 600px;">
+
+        <div class="cardx">
+            <h1 class="title">Editar usuario</h1>
+
+            <form th:action="@{'/admin/usuarios/' + ${usuario.id} + '/guardar'}"
+                  method="post">
+
+                <div class="field">
+                    <label class="label">Nombre</label>
+                    <div class="control">
+                        <input class="input"
+                               type="text"
+                               name="nombre"
+                               th:value="${usuario.nombre}"
+                               required>
+                    </div>
+                </div>
+
+                <div class="field">
+                    <label class="label">Correo</label>
+                    <div class="control">
+                        <input class="input"
+                               type="email"
+                               name="correo"
+                               th:value="${usuario.correo}"
+                               required>
+                    </div>
+                </div>
+
+                <div class="field">
+                    <label class="label">Rol</label>
+                    <div class="control">
+                        <div class="select is-fullwidth">
+                            <select name="idRol" required>
+                                <option th:each="r : ${roles}"
+                                        th:value="${r.id}"
+                                        th:selected="${usuario.rol != null and usuario.rol.id == r.id}"
+                                        th:text="${r.nombre}">
+                                </option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="field is-grouped mt-4">
+                    <div class="control">
+                        <button class="button btn-save" type="submit">Guardar cambios</button>
+                    </div>
+                    <div class="control">
+                        <a th:href="@{/admin/usuarios}" class="button btn-cancel">Cancelar</a>
+                    </div>
+                </div>
+
+            </form>
+        </div>
+    </div>
+</section>
+
+</body>
+</html>

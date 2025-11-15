@@ -1,10 +1,181 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <title>Title</title>
+    <title>DEBUG Gym — Administración de Instructores</title>
+    <link rel="stylesheet"
+          href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+
+    <style>
+        :root{
+            --bg:#050509;
+            --ink:#f5f5f7;
+            --muted:#b7b7c2;
+            --accent:#ffc107;
+            --card:#111118;
+            --line:#1f1f2b;
+            --danger:#e63946;
+        }
+
+        html, body{
+            background:var(--bg);
+            color:var(--ink);
+        }
+
+        .title{
+            color:var(--accent) !important;
+            font-weight:900;
+        }
+
+        .subtitle{
+            color:var(--muted) !important;
+        }
+
+        .cardx{
+            background:var(--card);
+            border-radius:16px;
+            border:1px solid var(--line);
+            box-shadow:0 14px 32px rgba(0,0,0,.55);
+            padding:1.5rem 1.75rem;
+        }
+
+        table{
+            background:transparent;
+            color:var(--ink);
+        }
+
+        thead{
+            background:#15151f;
+        }
+
+        th,td{
+            font-size:.9rem;
+        }
+
+        tbody tr:nth-child(even){
+            background:#111118;
+        }
+
+        .btn-main{
+            background:var(--accent);
+            color:#111;
+            font-weight:800;
+            border:none;
+        }
+
+        .btn-main:hover{
+            filter:brightness(.93);
+        }
+
+        .btn-edit{
+            background:#2563eb;
+            color:#f9fafb;
+            border:none;
+        }
+
+        .btn-edit:hover{
+            filter:brightness(.93);
+        }
+
+        .btn-delete{
+            background:var(--danger);
+            color:#f9fafb;
+            border:none;
+        }
+
+        .btn-delete:hover{
+            filter:brightness(.93);
+        }
+
+        .btn-back{
+            background:#1f2933;
+            color:var(--ink);
+            border:1px solid var(--line);
+        }
+
+        .btn-back:hover{
+            background:var(--accent);
+            color:#111;
+        }
+    </style>
 </head>
 <body>
+
+<section class="section">
+    <div class="container">
+        <div class="level mb-4">
+            <div class="level-left">
+                <div>
+                    <h1 class="title">Instructores</h1>
+                    <p class="subtitle">
+                        Administración de instructores: nombres, especialidad y vínculo con usuarios.
+                    </p>
+                </div>
+            </div>
+            <div class="level-right">
+                <a href="/admin/instructores/nuevo"
+                   class="button btn-main">
+                    + Nuevo instructor
+                </a>
+            </div>
+        </div>
+
+        <div class="cardx">
+            <div class="table-container">
+                <table class="table is-fullwidth is-striped">
+                    <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Nombre</th>
+                        <th>Especialidad</th>
+                        <th>Usuario (correo)</th>
+                        <th class="has-text-centered">Acciones</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <!-- Recorre la lista "instructores" que envíe el controlador -->
+                    <tr th:each="i : ${instructores}">
+                        <td th:text="${i.id}">1</td>
+                        <td th:text="${i.nombre}">Nombre Instructor</td>
+                        <td th:text="${i.especialidad}">Fuerza y Tonificación</td>
+                        <td th:text="${i.usuario != null ? i.usuario.correo : 'Sin usuario vinculado'}">
+                            correo@ejemplo.com
+                        </td>
+
+                        <td class="has-text-centered">
+                            <a th:href="@{'/admin/instructores/' + ${i.id} + '/editar'}"
+                               class="button is-small btn-edit">
+                                Editar
+                            </a>
+
+                            <form th:action="@{'/admin/instructores/' + ${i.id} + '/eliminar'}"
+                                  method="post"
+                                  style="display:inline"
+                                  onsubmit="return confirm('¿Seguro que deseas eliminar este instructor?');">
+                                <button type="submit" class="button is-small btn-delete">
+                                    Eliminar
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+
+                    <tr th:if="${#lists.isEmpty(instructores)}">
+                        <td colspan="5" class="has-text-centered" style="color:var(--muted);">
+                            No hay instructores registrados.
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="mt-4">
+                <a href="/admin" class="button btn-back">
+                    Volver al panel admin
+                </a>
+            </div>
+        </div>
+    </div>
+</section>
 
 </body>
 </html>

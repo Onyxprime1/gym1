@@ -42,22 +42,19 @@ public class AdminController {
         return "Administrador/usuarios"; // tu HTML de lista
     }
 
-    @GetMapping("/admin/clientes")
     public String adminClientes() {
         return "Administrador/clientes";
     }
 
-    @GetMapping("/admin/instructores")
+
     public String adminInstructores() {
         return "Administrador/instructores";
     }
 
-    @GetMapping("/admin/nutriologos")
     public String adminNutriologos() {
         return "Administrador/nutriologos";
     }
 
-    @GetMapping("/admin/membresias")
     public String adminMembresias() {
         return "Administrador/membresias";
     }

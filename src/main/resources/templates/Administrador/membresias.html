@@ -1,10 +1,172 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <title>Title</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>DEBUG Gym — Membresías y Pagos</title>
+
+    <link rel="stylesheet"
+          href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+
+    <style>
+        :root{
+            --bg:#050509;
+            --ink:#f5f5f7;
+            --muted:#b7b7c2;
+            --accent:#ffc107;
+            --card:#111118;
+            --line:#1b1b25;
+            --ok:#22c55e;
+            --danger:#ef4444;
+        }
+        html,body{background:var(--bg);color:var(--ink)}
+        .title, .subtitle, h1, h2, h3 {color:var(--ink)}
+        .table thead{background:#0f0f16;color:var(--accent)}
+        .cardx{
+            background:var(--card);
+            border-radius:14px;
+            border:1px solid var(--line);
+            padding:1.5rem;
+            box-shadow:0 12px 28px rgba(0,0,0,.35);
+        }
+        .btn-main{
+            background:var(--accent);
+            color:#111;
+            font-weight:700;
+            border:none;
+            border-radius:8px;
+        }
+        .btn-main:hover{filter:brightness(.9)}
+        .badge{
+            padding:.25rem .6rem;
+            border-radius:999px;
+            font-size:.75rem;
+        }
+        .badge-ok{
+            background:rgba(34,197,94,.15);
+            color:#bbf7d0;
+        }
+        .badge-off{
+            background:rgba(148,163,184,.2);
+            color:#cbd5e1;
+        }
+    </style>
 </head>
+
 <body>
+
+<section class="section">
+    <div class="container">
+
+        <!-- TÍTULO -->
+        <h1 class="title is-3 has-text-warning">Membresías y Pagos</h1>
+        <p class="subtitle has-text-grey-light">
+            Administración de todos los planes y registros de pago.
+        </p>
+
+        <!-- TARJETA DE LA TABLA -->
+        <div class="cardx">
+
+            <div class="is-flex is-justify-content-space-between mb-4">
+                <h2 class="title is-5">Listado de membresías</h2>
+                <a class="button btn-main" href="/admin/membresias/nueva">
+                    + Nueva membresía
+                </a>
+            </div>
+
+            <!-- TABLA -->
+            <div class="table-container">
+                <table class="table is-fullwidth is-striped is-dark">
+                    <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Tipo</th>
+                        <th>Precio</th>
+                        <th>Plan</th>
+                        <th>Acciones</th>
+                    </tr>
+                    </thead>
+
+                    <tbody>
+                    <tr th:each="m : ${membresias}">
+                        <td th:text="${m.id}">1</td>
+                        <td th:text="${m.tipo}">Mensual</td>
+                        <td th:text="'Q' + ${m.precio}">Q200</td>
+
+                        <td>
+                            <span th:if="${m.plan == 'premium'}"
+                                  class="badge badge-ok">Premium</span>
+                            <span th:if="${m.plan == 'basico'}"
+                                  class="badge badge-off">Básico</span>
+                        </td>
+
+                        <td>
+                            <a class="button is-small is-info"
+                               th:href="@{'/admin/membresias/' + ${m.id} + '/editar'}">
+                                Editar
+                            </a>
+
+                            <form th:action="@{'/admin/membresias/' + ${m.id} + '/eliminar'}"
+                                  method="post"
+                                  style="display:inline"
+                                  onsubmit="return confirm('¿Eliminar esta membresía?');">
+                                <button class="button is-small is-danger">Eliminar</button>
+                            </form>
+                        </td>
+                    </tr>
+
+                    <tr th:if="${#lists.isEmpty(membresias)}">
+                        <td colspan="5" class="has-text-centered muted">
+                            No hay membresías registradas.
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- PAGOS -->
+        <div class="cardx mt-6">
+            <div class="is-flex is-justify-content-space-between mb-4">
+                <h2 class="title is-5">Historial de Pagos</h2>
+            </div>
+
+            <table class="table is-fullwidth is-striped is-dark">
+                <thead>
+                <tr>
+                    <th>ID Pago</th>
+                    <th>Cliente</th>
+                    <th>Plan</th>
+                    <th>Monto</th>
+                    <th>Fecha</th>
+                </tr>
+                </thead>
+
+                <tbody>
+                <tr th:each="p : ${pagos}">
+                    <td th:text="${p.id}">1</td>
+                    <td th:text="${p.cliente}">Juan Pérez</td>
+                    <td th:text="${p.plan}">Mensual</td>
+                    <td th:text="'Q' + ${p.monto}">Q200</td>
+                    <td th:text="${p.fecha}">2025-11-14</td>
+                </tr>
+
+                <tr th:if="${#lists.isEmpty(pagos)}">
+                    <td colspan="5" class="has-text-centered muted">
+                        No hay pagos registrados.
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- BOTÓN VOLVER -->
+        <div class="mt-5">
+            <a href="/admin" class="button is-light">Volver al panel admin</a>
+        </div>
+
+    </div>
+</section>
 
 </body>
 </html>
