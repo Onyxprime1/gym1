@@ -1,82 +1,137 @@
 <!DOCTYPE html>
 <html lang="es" xmlns:th="http://www.thymeleaf.org">
 <head>
-    <meta charset="UTF-8"/>
-    <meta name="viewport" content="width=device-width, initial-scale=1"/>
-    <title th:text="${ejercicio.id == null} ? 'Crear ejercicio' : 'Editar ejercicio'">Ejercicio</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Ejercicio · Form</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
     <style>
-        :root{--bg:#0a0a0e;--ink:#f2f2f2;--muted:#b7b7c2;--accent:#ffc107;--card:#111118;--line:#1b1b25}
-        html,body{background:var(--bg);color:var(--ink)}
-        .cardx{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:1rem}
-        .muted{color:var(--muted)}
-        .btn-main{background:var(--accent);color:#111;padding:.45rem .8rem;border-radius:8px;border:none;font-weight:800}
-        label{font-weight:700}
-        .control .input, .control .textarea{background:#0d0d12;color:var(--ink);border:1px solid #222}
+        :root{--bg:#0a0a0e;--card:#111118;--line:#1b1b25;--ink:#f2f2f2;--muted:#b7b7c2}
+        body{background:var(--bg);color:var(--ink);font-family:Arial,Helvetica,sans-serif;margin:0}
+        .cardx{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:1rem;margin:1rem auto;max-width:900px}
+        .btn{padding:.45rem .7rem;border-radius:6px;border:none;cursor:pointer;color:#fff}
+        .btn-primary{background:#485fc7}
+        .btn-green{background:#2ecc71;color:#000}
+        .input, .textarea, select { background:#0f0f14;color:var(--ink);border:1px solid #222;padding:.5rem;border-radius:6px }
     </style>
 </head>
 <body>
-
-<nav class="navbar" role="navigation">
-    <div class="container">
-        <div class="navbar-brand">
-            <a class="navbar-item brand" href="/instructor">DEBUG Gym · Instructor</a>
-        </div>
-        <div class="navbar-menu">
-            <div class="navbar-end">
-                <div class="navbar-item">
-                    <a class="button is-light" href="/instructor/ejercicios">Volver</a>
-                </div>
-            </div>
-        </div>
-    </div>
+<nav style="padding:1rem 1rem">
+    <a href="/instructor" style="color:var(--muted)">Volver</a>
 </nav>
 
-<section class="section">
-    <div class="container">
-        <div class="cardx" style="max-width:900px;margin:0 auto">
-            <h2 class="title is-4" th:text="${ejercicio.id == null} ? 'Crear ejercicio' : 'Editar ejercicio'">Formulario</h2>
+<main>
+    <div class="cardx">
+        <h2 style="margin-top:0">Crear / Editar ejercicio</h2>
 
-            <!-- CORRECCIÓN: th:object debe usar el nombre 'ejercicio' (minuscula) que es el atributo del modelo -->
-            <form th:action="@{/instructor/ejercicios/guardar}" th:object="${ejercicio}" method="post">
-                <input type="hidden" th:field="*{id}"/>
-                <div class="field">
-                    <label class="label">Nombre</label>
-                    <div class="control">
-                        <input class="input" type="text" th:field="*{nombre}" required/>
-                    </div>
+        <form th:action="@{/instructor/ejercicios/guardar}" th:object="${ejercicio}" method="post">
+            <input type="hidden" th:field="*{id}"/>
+
+            <div style="margin-bottom:0.75rem">
+                <label style="font-weight:700">Nombre</label>
+                <input class="input" type="text" th:field="*{nombre}" required/>
+            </div>
+
+            <div style="margin-bottom:0.75rem">
+                <label style="font-weight:700">Músculo</label>
+                <input class="input" type="text" th:field="*{musculo}" />
+            </div>
+
+            <!-- VIDEO SELECTOR -->
+            <div style="margin-bottom:0.75rem">
+                <label style="font-weight:700">Vídeo del canal</label>
+                <div style="display:flex;gap:.5rem;align-items:center">
+                    <select id="videoSelect" style="flex:1;padding:.45rem;border-radius:6px;background:#0f0f14;color:#fff;border:1px solid #222">
+                        <option value="">-- Selecciona un vídeo del canal --</option>
+                        <option th:each="v : ${channelVideos}"
+                                th:value="${v['videoId']}"
+                                th:text="${v['title']}">Vídeo</option>
+                    </select>
+
+                    <button type="button" id="btnAttachVideo" class="btn btn-primary" onclick="attachSelectedVideo()" disabled>Adjuntar</button>
+                    <button type="button" id="btnViewVideo" class="btn btn-green" onclick="viewSelectedVideo()" disabled>Ver</button>
+
+                    <!-- hidden input para enviar el link al backend -->
+                    <input type="hidden" id="form_linkVideo" name="linkVideo" th:field="*{linkVideo}" />
                 </div>
+                <div id="videoMeta" style="margin-top:.5rem;color:var(--muted)"></div>
+            </div>
 
-                <div class="field">
-                    <label class="label">Músculo</label>
-                    <div class="control">
-                        <input class="input" type="text" th:field="*{musculo}" />
-                    </div>
-                </div>
+            <div style="margin-bottom:0.75rem">
+                <label style="font-weight:700">Descripción</label>
+                <textarea class="textarea" th:field="*{descripcion}" rows="6"></textarea>
+            </div>
 
-                <div class="field">
-                    <label class="label">Link de video (embed o URL)</label>
-                    <div class="control">
-                        <input class="input" type="text" th:field="*{linkVideo}" />
-                    </div>
-                </div>
+            <div style="display:flex;gap:.5rem;justify-content:flex-end">
+                <a class="button is-light" href="/instructor/ejercicios">Cancelar</a>
+                <button type="submit" class="button is-primary" style="background:#ffc107;color:#000">Guardar</button>
+            </div>
+        </form>
+    </div>
+</main>
 
-                <div class="field">
-                    <label class="label">Descripción</label>
-                    <div class="control">
-                        <textarea class="textarea" th:field="*{descripcion}" rows="6"></textarea>
-                    </div>
-                </div>
-
-                <div style="display:flex;gap:.5rem;justify-content:flex-end;margin-top:1rem">
-                    <a class="button is-light" href="/instructor/ejercicios">Cancelar</a>
-                    <button type="submit" class="btn-main">Guardar</button>
-                </div>
-            </form>
-
+<!-- Modal -->
+<div id="videoModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);align-items:center;justify-content:center;z-index:2000">
+    <div style="width:90%;max-width:900px;background:#0f0f14;padding:12px;border-radius:8px;position:relative">
+        <button onclick="closeVideoModal()" style="position:absolute;right:12px;top:12px;background:#666;color:#fff;border:none;padding:.4rem .6rem;border-radius:6px">Cerrar</button>
+        <div style="padding-top:56.25%;position:relative">
+            <iframe id="modalIframe" style="position:absolute;top:0;left:0;width:100%;height:100%;border:0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
         </div>
     </div>
-</section>
+</div>
 
+<script>
+    // Inicializa la UI cuando la página cargue
+    document.addEventListener('DOMContentLoaded', function() {
+        const sel = document.getElementById('videoSelect');
+        const btnAttach = document.getElementById('btnAttachVideo');
+        const btnView = document.getElementById('btnViewVideo');
+        const hidden = document.getElementById('form_linkVideo');
+        const meta = document.getElementById('videoMeta');
+
+        // Si el select tiene opción seleccionada preexistente (editar), activa botones
+        if (sel && sel.value) {
+            btnAttach.disabled = !sel.value;
+            btnView.disabled = !sel.value;
+            meta.textContent = sel.selectedOptions[0] ? sel.selectedOptions[0].textContent : '';
+        }
+
+        // Listener para cambios en la selección
+        if (sel) {
+            sel.addEventListener('change', function() {
+                const vid = this.value;
+                btnAttach.disabled = !vid;
+                btnView.disabled = !vid;
+                meta.textContent = vid ? this.selectedOptions[0].textContent : '';
+            });
+        }
+
+        // funciones globales llamadas por botones
+        window.attachSelectedVideo = function() {
+            const vid = sel.value;
+            if (!vid) return;
+            if (hidden) hidden.value = 'https://youtu.be/' + vid;
+            if (meta) meta.textContent = sel.selectedOptions[0].textContent;
+        };
+
+        window.viewSelectedVideo = function() {
+            const vid = sel.value;
+            if (!vid) return;
+            openVideoModal(vid);
+        };
+
+        window.openVideoModal = function(videoId) {
+            const iframe = document.getElementById('modalIframe');
+            iframe.src = 'https://www.youtube.com/embed/' + encodeURIComponent(videoId) + '?rel=0';
+            document.getElementById('videoModal').style.display = 'flex';
+        };
+
+        window.closeVideoModal = function() {
+            const iframe = document.getElementById('modalIframe');
+            iframe.src = '';
+            document.getElementById('videoModal').style.display = 'none';
+        };
+    });
+</script>
 </body>
 </html>
