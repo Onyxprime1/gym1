@@ -1,91 +1,163 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
 <head>
-    <meta charset="UTF-8">
-    <title>DEBUG Gym • Platillos</title>
-    <link rel="stylesheet" th:href="@{/css/styles.css}">
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>DEBUG Gym — Platillos</title>
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+
+    <style>
+        :root{
+            --bg:#0a0a0e;
+            --ink:#f2f2f2;
+            --muted:#b7b7c2;
+            --accent:#ffc107;
+            --card:#111118;
+            --line:#1b1b25;
+        }
+        html,body{
+            background:var(--bg);
+            color:var(--ink);
+        }
+        .navbar{
+            background:#0b0b12;
+            border-bottom:1px solid rgba(255,255,255,.06);
+        }
+        .brand{
+            color:var(--accent);
+            font-weight:900;
+            letter-spacing:.6px;
+        }
+        .cardx{
+            background:var(--card);
+            border:1px solid var(--line);
+            border-radius:12px;
+            padding:1.5rem;
+        }
+        .muted{
+            color:var(--muted);
+        }
+        table{width:100%;color:var(--ink);}
+        thead{background:#0e0e13;}
+        th,td{padding:.7rem .75rem;font-size:.95rem;}
+        tbody tr:nth-child(even){background:#0d0d12;}
+
+        .btn-main{
+            background:var(--accent);
+            color:#111;
+            padding:.45rem .9rem;
+            border-radius:8px;
+            border:none;
+            font-weight:800;
+        }
+        a{color:var(--accent);}
+    </style>
 </head>
-<body class="bg-dark">
+<body>
 
-<header class="topbar">
-    <div class="logo">DEBUG Gym • Nutriólogo</div>
-    <div class="user-info">
-        <a th:href="@{/nutriologo/panel}" class="btn btn-sm btn-outline">Volver al panel</a>
+<!-- NAVBAR -->
+<nav class="navbar" role="navigation">
+    <div class="container">
+        <div class="navbar-brand">
+            <a class="navbar-item brand" href="/nutriologo/panel">DEBUG Gym · Nutriólogo</a>
+        </div>
+        <div class="navbar-menu">
+            <div class="navbar-end">
+                <div class="navbar-item">
+                    <a class="button is-light" href="/nutriologo/panel">Panel</a>
+                </div>
+            </div>
+        </div>
     </div>
-</header>
+</nav>
 
-<main class="container">
+<!-- ALERTAS -->
+<div th:if="${error}" class="notification is-danger"
+     style="margin: 1rem; background:#5c0000; color:white;">
+    <p th:text="${error}"></p>
+</div>
 
-    <section class="page-header">
-        <h1>Platillos</h1>
-        <p>Catálogo de platillos disponibles para armar las dietas de tus clientes.</p>
-    </section>
+<div th:if="${success}" class="notification is-success"
+     style="margin: 1rem; background:#1c4d1c; color:white;">
+    <p th:text="${success}"></p>
+</div>
 
-    <!-- ALERTAS -->
-    <div th:if="${success}" class="alert alert-success" th:text="${success}"></div>
-    <div th:if="${error}" class="alert alert-danger" th:text="${error}"></div>
+<!-- CONTENIDO -->
+<section class="section">
+    <div class="container">
 
-    <!-- BUSCADOR Y BOTÓN NUEVO -->
-    <section class="toolbar">
-        <form th:action="@{/nutriologo/platillos}" method="get" class="search-form">
-            <input type="text" name="q" placeholder="Buscar por nombre o tipo"
-                   th:value="${q}" class="input-text">
-            <button type="submit" class="btn btn-primary">Buscar</button>
-        </form>
+        <div class="cardx">
 
-        <a th:href="@{/nutriologo/platillos/nuevo}" class="btn btn-success">
-            + Nuevo platillo
-        </a>
-    </section>
+            <!-- Título -->
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+                <div>
+                    <div style="color:var(--accent);font-weight:800;letter-spacing:.08em;text-transform:uppercase;font-size:.8rem">
+                        Platillos
+                    </div>
+                    <h2 class="title is-4">Gestión de platillos</h2>
+                    <p class="muted">Administra los platillos disponibles para las dietas.</p>
+                </div>
 
-    <!-- TABLA DE PLATILLOS -->
-    <section class="card">
-        <table class="table">
-            <thead>
-            <tr>
-                <th>ID</th>
-                <th>Nombre</th>
-                <th>Tipo</th>
-                <th>Calorías</th>
-                <th>Proteínas</th>
-                <th>Carbohidratos</th>
-                <th>Grasas</th>
-                <th style="width: 150px;">Acciones</th>
-            </tr>
-            </thead>
-            <tbody>
-            <tr th:each="p : ${platillos}">
-                <td th:text="${p.idPlatillo}">1</td>
-                <td th:text="${p.nombre}">Ejemplo</td>
-                <td th:text="${p.tipo}">Desayuno</td>
-                <td th:text="${p.calorias}">0</td>
-                <td th:text="${p.proteinas}">0</td>
-                <td th:text="${p.carbohidratos}">0</td>
-                <td th:text="${p.grasas}">0</td>
-                <td>
-                    <a th:href="@{'/nutriologo/platillos/editar/' + ${p.idPlatillo}}"
-                       class="btn btn-sm btn-warning">Editar</a>
+                <div>
+                    <a href="/nutriologo/platillos/nuevo" class="btn-main">+ Nuevo platillo</a>
+                </div>
+            </div>
 
-                    <form th:action="@{'/nutriologo/platillos/eliminar/' + ${p.idPlatillo}}"
-                          method="post" style="display:inline-block"
-                          onsubmit="return confirm('¿Seguro que deseas eliminar este platillo?');">
-                        <button type="submit" class="btn btn-sm btn-danger">Eliminar</button>
-                    </form>
-                </td>
-            </tr>
+            <!-- Buscador -->
+            <form action="/nutriologo/platillos" method="get"
+                  style="margin-bottom:1rem;display:flex;gap:.5rem;align-items:center">
+                <input class="input" type="text" name="q"
+                       placeholder="Buscar por nombre"
+                       th:value="${q}" style="max-width:420px"/>
+                <button class="button is-dark" type="submit">Buscar</button>
+                <a class="button is-light" href="/nutriologo/platillos">Limpiar</a>
+            </form>
 
-            <tr th:if="${#lists.isEmpty(platillos)}">
-                <td colspan="8" style="text-align:center;">No hay platillos registrados.</td>
-            </tr>
-            </tbody>
-        </table>
-    </section>
+            <!-- TABLA -->
+            <div style="overflow-x:auto">
+                <table>
+                    <thead>
+                    <tr>
+                        <th>Nombre</th>
+                        <th>Ingredientes</th>
+                        <th>Preparación</th>
+                        <th style="width:160px">Acciones</th>
+                    </tr>
+                    </thead>
 
-</main>
+                    <tbody>
+                    <tr th:each="p : ${platillos}">
+                        <td th:text="${p.nombre}">Nombre</td>
 
-<footer class="footer">
-    DEBUG Gym • Módulo de Nutriólogo • 2025
-</footer>
+                        <td th:text="${p.ingredientes}">Ingredientes</td>
+
+                        <td th:text="${p.preparacion}">Preparación</td>
+
+                        <td>
+                            <a class="button is-small is-link"
+                               th:href="@{|/nutriologo/platillos/editar/${p.idPlatillo}|}">
+                                Editar
+                            </a>
+
+                            <form th:action="@{|/nutriologo/platillos/eliminar/${p.idPlatillo}|}"
+                                  method="post" style="display:inline"
+                                  onsubmit="return confirm('¿Eliminar este platillo?');">
+                                <button class="button is-small is-danger" type="submit">Eliminar</button>
+                            </form>
+                        </td>
+                    </tr>
+
+                    <tr th:if="${#lists.isEmpty(platillos)}">
+                        <td colspan="4" class="muted">No hay platillos registrados.</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+
+        </div>
+    </div>
+</section>
 
 </body>
 </html>

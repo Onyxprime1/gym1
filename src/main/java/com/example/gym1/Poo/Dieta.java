@@ -2,6 +2,9 @@ package com.example.gym1.Poo;
 
 import jakarta.persistence.*;
 
+import java.util.HashSet;
+import java.util.Set;
+
 @Entity
 @Table(name = "dietas")
 public class Dieta {
@@ -22,6 +25,15 @@ public class Dieta {
     @ManyToOne
     @JoinColumn(name = "id_nutriologo")
     private Nutriologo nutriologo;
+
+    // ===================== MANY-TO-MANY CON PLATILLOS =====================
+    @ManyToMany
+    @JoinTable(
+            name = "dieta_platillo",
+            joinColumns = @JoinColumn(name = "id_dieta"),
+            inverseJoinColumns = @JoinColumn(name = "id_platillo")
+    )
+    private Set<Platillo> platillos = new HashSet<>();
 
     // ============ GETTERS Y SETTERS ============
 
@@ -63,5 +75,13 @@ public class Dieta {
 
     public void setNutriologo(Nutriologo nutriologo) {
         this.nutriologo = nutriologo;
+    }
+
+    public Set<Platillo> getPlatillos() {
+        return platillos;
+    }
+
+    public void setPlatillos(Set<Platillo> platillos) {
+        this.platillos = platillos;
     }
 }

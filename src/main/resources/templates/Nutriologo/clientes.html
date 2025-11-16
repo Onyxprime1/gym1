@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>DEBUG Gym — Pacientes</title>
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+
+    <style>
+        :root{
+            --bg:#0a0a0e;
+            --ink:#f2f2f2;
+            --muted:#b7b7c2;
+            --accent:#ffc107;
+            --card:#111118;
+            --line:#1b1b25;
+        }
+        html,body{background:var(--bg);color:var(--ink);}
+        .navbar{background:#0b0b12;border-bottom:1px solid rgba(255,255,255,.06);}
+        .brand{color:var(--accent);font-weight:900;letter-spacing:.6px;}
+        .cardx{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:1.5rem;}
+        .muted{color:var(--muted);}
+        table{width:100%;color:var(--ink);}
+        thead{background:#0e0e13;}
+        th,td{padding:.7rem .75rem;font-size:.95rem;}
+        tbody tr:nth-child(even){background:#0d0d12;}
+        a{color:var(--accent);}
+        .btn-main{
+            background:var(--accent);
+            color:#111;
+            padding:.45rem .9rem;
+            border-radius:8px;
+            border:none;
+            font-weight:800;
+        }
+    </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="navbar" role="navigation">
+    <div class="container">
+        <div class="navbar-brand">
+            <a class="navbar-item brand" href="/nutriologo/panel">DEBUG Gym · Nutriólogo</a>
+        </div>
+        <div class="navbar-menu">
+            <div class="navbar-end">
+                <div class="navbar-item">
+                    <a class="button is-light" href="/nutriologo/panel">Panel</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<section class="section">
+    <div class="container">
+        <div class="cardx">
+
+            <!-- Encabezado -->
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+                <div>
+                    <div style="color:var(--accent);font-weight:800;letter-spacing:.08em;text-transform:uppercase;font-size:.8rem">
+                        Pacientes
+                    </div>
+                    <h2 class="title is-4">Listado de pacientes</h2>
+                    <p class="muted" th:if="${!modoNuevaDieta and !modoAsignarDieta}">
+                        Clientes registrados con sus datos físicos básicos.
+                    </p>
+                    <p class="muted" th:if="${modoNuevaDieta}">
+                        Selecciona un paciente y usa el botón <strong>“Crear dieta”</strong> para registrar un nuevo plan
+                        (nombre de la dieta y sus indicaciones).
+                    </p>
+                    <p class="muted" th:if="${modoAsignarDieta}">
+                        Selecciona un paciente y usa el botón <strong>“Asignar dieta”</strong> para elegir una dieta ya creada
+                        en el sistema.
+                    </p>
+
+
+                </div>
+            </div>
+
+            <!-- Buscador por nombre -->
+            <form action="/nutriologo/clientes" method="get"
+                  style="margin-bottom:1rem;display:flex;gap:.5rem;align-items:center">
+
+                <input type="hidden" name="modo" th:value="${modo}"/>
+
+                <input class="input" type="text" name="q"
+                       placeholder="Buscar por nombre"
+                       th:value="${q}" style="max-width:420px"/>
+
+                <button class="button is-dark" type="submit">Buscar</button>
+
+                <a class="button is-light"
+                   th:href="${modo} != null ? @{|/nutriologo/clientes?modo=${modo}|} : @{/nutriologo/clientes}">
+                    Limpiar
+                </a>
+            </form>
+
+
+
+            <!-- Tabla de pacientes -->
+            <div style="overflow-x:auto">
+                <table>
+                    <thead>
+                    <tr>
+                        <th>Nombre</th>
+                        <th>Edad</th>
+                        <th>Peso (kg)</th>
+                        <th>Altura (m)</th>
+                        <th>IMC</th>
+                        <th>Acciones</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="c : ${clientes}">
+                        <td th:text="${c.nombre}">Nombre</td>
+                        <td th:text="${c.edad}">0</td>
+                        <td th:text="${c.peso}">0.0</td>
+                        <td th:text="${c.altura}">0.0</td>
+                        <td th:text="${c.altura != null && c.altura > 0 ? (c.peso / (c.altura * c.altura)) : 0}">
+                            0
+                        </td>
+
+                        <td>
+                        <td>
+                            <!-- Modo normal: ver dietas del paciente -->
+                            <a class="button is-small is-link"
+                               th:if="${!modoNuevaDieta and !modoAsignarDieta}"
+                               th:href="@{|/nutriologo/dietas?clienteId=${c.id}|}">
+                                Ver dietas
+                            </a>
+
+                            <!-- Modo normal: ver reportes del paciente -->
+                            <a class="button is-small is-warning"
+                               th:if="${!modoNuevaDieta and !modoAsignarDieta}"
+                               th:href="@{|/nutriologo/reportes/cliente/${c.id}|}">
+                                Ver reportes
+                            </a>
+
+                            <!-- Modo crear nueva dieta -->
+                            <a class="button is-small is-warning"
+                               th:if="${modoNuevaDieta}"
+                               th:href="@{|/nutriologo/dietas/nuevo?clienteId=${c.id}|}">
+                                Crear dieta
+                            </a>
+
+                            <!-- Modo asignar dieta existente -->
+                            <a class="button is-small is-info"
+                               th:if="${modoAsignarDieta}"
+                               th:href="@{|/nutriologo/dietas/asignar?clienteId=${c.id}|}">
+                                Asignar dieta
+                            </a>
+                        </td>
+
+
+                    </tr>
+
+                    <tr th:if="${#lists.isEmpty(clientes)}">
+                        <td colspan="6" class="muted">No hay pacientes registrados.</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+
+        </div>
+    </div>
+</section>
+
+</body>
+</html>

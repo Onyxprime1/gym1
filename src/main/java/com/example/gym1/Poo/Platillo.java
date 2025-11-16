@@ -1,6 +1,7 @@
 package com.example.gym1.Poo;
 
 import jakarta.persistence.*;
+import java.util.Set;
 
 @Entity
 @Table(name = "platillos")
@@ -17,6 +18,10 @@ public class Platillo {
 
     @Column(columnDefinition = "TEXT")
     private String preparacion;
+
+    // Relación inversa con Dieta (opcional pero útil)
+    @ManyToMany(mappedBy = "platillos")
+    private Set<Dieta> dietas;
 
     // ===== GETTERS y SETTERS =====
 
@@ -50,5 +55,13 @@ public class Platillo {
 
     public void setPreparacion(String preparacion) {
         this.preparacion = preparacion;
+    }
+
+    public Set<Dieta> getDietas() {
+        return dietas;
+    }
+
+    public void setDietas(Set<Dieta> dietas) {
+        this.dietas = dietas;
     }
 }
