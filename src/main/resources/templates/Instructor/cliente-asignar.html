@@ -11,7 +11,11 @@
         .containerx{max-width:1000px;margin:0 auto;padding:2rem}
         .cardx{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:1rem;margin-bottom:1rem}
         .muted{color:var(--muted)}
-        .day-row{display:flex;gap:.5rem;align-items:center;margin-bottom:.6rem}
+        .checkboxes { background:#0f0f14; border:1px solid #262626; border-radius:6px; padding:.5rem; max-height:220px; overflow:auto; width:100%; }
+        .checkbox-item { padding:.5rem .6rem; border-bottom:1px dashed rgba(255,255,255,0.02); display:flex; gap:.6rem; align-items:flex-start; }
+        .checkbox-item:last-child { border-bottom:none; }
+        .actions-row { display:flex; gap:.5rem; justify-content:flex-end; margin-top:1rem; }
+        .button.is-light { background:#111216; color:#f2f2f2; border:1px solid rgba(255,255,255,.03); }
     </style>
 </head>
 <body>
@@ -25,48 +29,56 @@
 <div class="containerx">
     <div class="cardx">
         <h2 class="title is-4" th:text="${cliente.nombre}">Cliente</h2>
-        <!-- Usamos la variable 'membresia' que inyecta el controlador -->
         <div class="muted">Membresía: <span th:text="${membresia}">—</span></div>
     </div>
 
-    <form th:action="@{|/instructor/clientes/${cliente.id}/asignar|}" method="post">
-        <div class="cardx">
-            <h3 class="title is-6">Asignar rutinas por día</h3>
-            <p class="muted">Selecciona una plantilla por día y pulsa Guardar. Se crearán copias asignadas al cliente.</p>
+    <div class="cardx">
+        <h3 class="title is-6">Asignar rutinas</h3>
+        <p class="muted">Selecciona una o varias plantillas y pulsa "Asignar" para vincularlas a este cliente.</p>
 
-            <div class="day-row">
-                <div style="width:100px">Lunes</div>
-                <div class="select">
-                    <select name="lunes">
-                        <option value="">-- Ninguna --</option>
-                        <option th:each="p : ${plantillas}" th:value="${p.id}" th:text="${p.nombre}">Plantilla</option>
-                    </select>
+        <form th:action="@{|/instructor/clientes/${cliente.id}/asignar|}" method="post">
+            <input type="hidden" th:if="${_csrf != null}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+
+            <div style="width:100%">
+                <label class="muted">Plantillas disponibles (solo las tuyas)</label>
+                <div class="checkboxes" role="listbox" aria-multiselectable="true">
+                    <div th:each="p : ${plantillas}" class="checkbox-item">
+                        <input type="checkbox" th:id="${'tpl-' + p.id}" name="rutinaIds" th:value="${p.id}" />
+                        <div>
+                            <label th:for="${'tpl-' + p.id}">
+                                <strong th:text="${p.nombre}">Plantilla</strong>
+                            </label>
+                            <div class="muted" style="font-size:.9rem" th:text="${p.descripcion}">Descripción</div>
+                        </div>
+                    </div>
+                    <div th:if="${#lists.isEmpty(plantillas)}" class="muted" style="padding:.6rem">No hay plantillas disponibles para asignar.</div>
+                </div>
+
+                <div class="actions-row">
+                    <a class="button is-light" th:href="@{/instructor/clientes}">Cancelar</a>
+                    <button type="submit" class="button" style="background:#ffc107;color:#111;padding:.45rem .9rem;border-radius:6px">Asignar</button>
                 </div>
             </div>
-
-            <!-- Agrega más días si quieres -->
-
-            <div style="display:flex;justify-content:flex-end;gap:.5rem;margin-top:1rem">
-                <a class="button is-light" th:href="@{/instructor/clientes}">Cancelar</a>
-                <input type="hidden" th:if="${_csrf != null}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
-                <button type="submit" class="button" style="background:#ffc107;color:#111;padding:.5rem .9rem;border-radius:6px">Guardar asignaciones</button>
-            </div>
-        </div>
-    </form>
+        </form>
+    </div>
 
     <div class="cardx" style="margin-top:1rem">
         <h3 class="title is-6">Rutinas asignadas</h3>
         <div th:if="${#lists.isEmpty(assignedRutinas)}" class="muted">No hay rutinas asignadas a este cliente.</div>
         <ul th:if="${!#lists.isEmpty(assignedRutinas)}" style="list-style:none;padding:0">
             <li th:each="r : ${assignedRutinas}" style="padding:.45rem 0;border-bottom:1px solid rgba(255,255,255,.02)">
-                <strong th:text="${r.nombre}">Rutina</strong>
-                <div class="muted" th:text="${r.descripcion}">Descripción</div>
-                <div style="margin-top:.35rem">
-                    <a th:href="@{|/instructor/rutinas/editar/${r.id}|}" class="button is-small is-light">Editar</a>
-                    <form th:action="@{|/instructor/rutinas/eliminar/${r.id}|}" method="post" style="display:inline" onsubmit="return confirm('¿Eliminar rutina?');">
-                        <input type="hidden" th:if="${_csrf != null}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
-                        <button class="button is-small is-danger" type="submit">Eliminar</button>
-                    </form>
+                <div style="display:flex;align-items:center;justify-content:space-between">
+                    <div>
+                        <strong th:text="${r.nombre}">Rutina</strong>
+                        <div class="muted" th:text="${r.descripcion}">Descripción</div>
+                    </div>
+                    <div style="display:flex;gap:.5rem;align-items:center">
+                        <!-- Se quita el botón Editar: solo Quitar (eliminar asignación) -->
+                        <form th:action="@{|/instructor/clientes/${cliente.id}/desasignar/${r.id}|}" method="post" style="display:inline" onsubmit="return confirm('¿Quitar esta rutina del cliente?');">
+                            <input type="hidden" th:if="${_csrf != null}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                            <button class="button is-small is-danger" type="submit">Quitar</button>
+                        </form>
+                    </div>
                 </div>
             </li>
         </ul>

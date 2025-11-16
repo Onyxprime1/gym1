@@ -9,8 +9,6 @@
         :root{--bg:#0a0a0e;--card:#111118;--line:#1b1b25;--ink:#f2f2f2;--muted:#b7b7c2;--accent:#ffc107}
         html,body{background:var(--bg);color:var(--ink);margin:0;padding:0;font-family:Arial,Helvetica,sans-serif}
         .containerx{max-width:1100px;margin:2rem auto;padding:0 1rem}
-        .navbar { background:#08080a; border-bottom:1px solid rgba(255,255,255,.03); }
-        .brand { font-weight:800; color:var(--accent); padding:.85rem 0; }
         .cardx{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:1rem;margin-bottom:1rem}
         .muted{color:var(--muted)}
         .rutina-block{margin-bottom:1rem;padding:0;border-radius:10px;overflow:hidden}
@@ -25,14 +23,11 @@
         .small-btn{padding:.35rem .55rem;border-radius:6px;text-decoration:none;cursor:pointer}
         .btn-delete{background:#ff6b81;color:#fff;border:none}
         .btn-assign{background:#3aa0ff;color:#fff;border:none}
+        .field-inline { display:flex; gap:.4rem; align-items:center; }
+        .edit-btn { background:#485fc7;color:#fff;border:none;padding:.25rem .4rem;border-radius:6px; cursor:pointer }
+        .small-input { padding:.35rem .5rem;border-radius:6px;background:#0f0f14;border:1px solid #262626;color:#fff }
+        .num { width:90px; padding:.35rem .5rem; border-radius:6px; background:#0f0f14; border:1px solid #262626; color:#fff }
         .note { color:var(--muted); font-size:.95rem; margin-top:.5rem; }
-        .search { width:100%;padding:.6rem;border-radius:8px;border:1px solid #262626;background:#0f0f14;color:#fff }
-        .form-inline { display:flex; gap:.5rem; flex-wrap:wrap; align-items:center; margin-top:.5rem }
-        input.small { padding:.4rem .6rem; border-radius:6px; background:#0f0f14; border:1px solid #262626; color:#fff }
-        input.num { width:90px; padding:.35rem .5rem; border-radius:6px; background:#0f0f14; border:1px solid #262626; color:#fff }
-        .field-with-btn { display:flex; align-items:center; gap:.4rem; }
-        .header-actions { display:flex; gap:.5rem; align-items:center; }
-        .save-button { background:#485fc7; color:#fff; border:none; padding:.35rem .55rem; border-radius:6px; }
     </style>
 </head>
 <body>
@@ -49,8 +44,8 @@
             <p class="muted" style="margin-top:.5rem">Tus rutinas: pulsa "Abrir" para ver ejercicios, series y repeticiones. Puedes buscar y administrar.</p>
 
             <div style="margin-top:1rem; display:flex; gap:.5rem; align-items:center">
-                <input id="searchInput" class="search" placeholder="Buscar por rutina, descripción o ejercicio..." oninput="filterRutinas()" />
-                <a th:href="@{/instructor/rutinas/crear}" class="small-btn btn-assign" style="margin-left:auto">Crear rutina</a>
+                <input id="searchInput" class="search" placeholder="Buscar por rutina, descripción o ejercicio..." oninput="filterRutinas()" style="width:100%;padding:.6rem;border-radius:8px;border:1px solid #262626;background:#0f0f14;color:#fff"/>
+                <a th:href="@{/instructor/rutinas/crear}" class="small-btn btn-assign" style="margin-left:.5rem">Crear rutina</a>
             </div>
         </div>
 
@@ -60,21 +55,14 @@
         <div th:each="rv : ${rutinasViews}" class="rutina-block cardx" th:attr="data-text=${rv.searchText}">
             <div class="rutina-header" th:attr="data-rid=${rv.rutina.id}">
                 <div style="max-width:78%;">
-                    <div>
-                        <span class="rutina-title" th:text="${rv.rutina.nombre}">Nombre rutina</span>
-                    </div>
+                    <div><span class="rutina-title" th:text="${rv.rutina.nombre}">Nombre rutina</span></div>
                     <div class="muted" th:text="${rv.rutina.descripcion}">Descripción</div>
                 </div>
 
                 <div class="actions">
-                    <!-- Abrir / Cerrar -->
                     <button type="button" class="small-btn btn-open" onclick="toggleDetails(this)">Abrir</button>
 
-                    <!-- BOTÓN EDIT (único): envía el form de detalles como POST. Usamos attribute form para apuntar al formulario dentro del body -->
-                    <button type="submit" class="small-btn btn-edit"
-                            th:attr="form=${'form-detalles-' + rv.rutina.id}">Editar</button>
-
-                    <!-- Eliminar RUTINA completa (POST) - confirm inline -->
+                    <!-- Eliminar RUTINA completa (POST) -->
                     <form th:action="@{|/instructor/rutinas/eliminar/${rv.rutina.id}|}" method="post" style="display:inline" onsubmit="return confirm('¿Eliminar rutina?');">
                         <input type="hidden" th:if="${_csrf != null}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
                         <button type="submit" class="small-btn btn-delete">Eliminar</button>
@@ -82,70 +70,93 @@
                 </div>
             </div>
 
-            <!-- cuerpo con el form de detalles; el botón de la cabecera usa form="form-detalles-..." para submit -->
             <div class="rutina-body" style="display:none">
-                <form th:id="${'form-detalles-' + rv.rutina.id}"
-                      th:action="@{|/instructor/rutinas/${rv.rutina.id}/detalles/guardar|}"
-                      method="post">
-                    <input type="hidden" th:if="${_csrf != null}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
-                    <input type="hidden" name="nombre" th:value="${rv.rutina.nombre}"/>
-                    <input type="hidden" name="descripcion" th:value="${rv.rutina.descripcion}"/>
+                <div th:if="${#lists.isEmpty(rv.detalles)}" class="note" style="padding:1rem">No hay ejercicios asignados a esta rutina.</div>
 
-                    <div th:if="${#lists.isEmpty(rv.detalles)}" class="note">No hay ejercicios asignados a esta rutina.</div>
+                <table th:if="${!#lists.isEmpty(rv.detalles)}" class="detalles">
+                    <thead>
+                    <tr>
+                        <th>Ejercicio</th>
+                        <th>Día</th>
+                        <th>Series</th>
+                        <th>Repeticiones</th>
+                        <th></th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <!-- Un formulario POR FILA: editar y eliminar no afectan otras filas -->
+                    <tr th:each="d : ${rv.detalles}">
+                        <td th:text="${d.ejercicioNombre}">Ejercicio</td>
 
-                    <table th:if="${!#lists.isEmpty(rv.detalles)}" class="detalles">
-                        <thead>
-                        <tr>
-                            <th>Ejercicio</th>
-                            <th>Día</th>
-                            <th>Series</th>
-                            <th>Repeticiones</th>
-                            <th></th>
-                        </tr>
-                        </thead>
-                        <tbody>
-                        <!-- Importante: por fila, los inputs tienen nombres idénticos y en el mismo orden -->
-                        <tr th:each="d : ${rv.detalles}">
-                            <td th:text="${d.ejercicioNombre}">Ejercicio</td>
+                        <!-- Visible inputs (kept outside the hidden row-edit form) -->
+                        <td>
+                            <input class="small-input row-dia" type="text" th:value="${d.diaSemana}" />
+                        </td>
 
-                            <td>
+                        <td>
+                            <input class="num row-series" type="number" min="0" th:value="${d.series != null ? d.series : ''}" />
+                        </td>
+
+                        <td>
+                            <input class="num row-repes" type="number" min="0" th:value="${d.repeticiones != null ? d.repeticiones : ''}" />
+                        </td>
+
+                        <td>
+                            <!-- Hidden forms to submit: one for detalleId case, one for fallback (ejercicioId) -->
+                            <form th:if="${d.detalleId != null}" th:id="${'row-edit-form-' + d.detalleId}"
+                                  th:action="@{|/instructor/rutinas/${rv.rutina.id}/detalles/editar/${d.detalleId}|}"
+                                  method="post" style="display:inline;">
+                                <input type="hidden" th:if="${_csrf != null}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                                <input type="hidden" name="dia" />
+                                <input type="hidden" name="series" />
+                                <input type="hidden" name="repeticiones" />
+                            </form>
+
+                            <form th:unless="${d.detalleId != null}" th:id="${'row-edit-form-fallback-' + rv.rutina.id + '-' + d.ejercicioId}"
+                                  th:action="@{|/instructor/rutinas/${rv.rutina.id}/detalles/editar|}"
+                                  method="post" style="display:inline;">
+                                <input type="hidden" th:if="${_csrf != null}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
                                 <input type="hidden" name="ejercicioId" th:value="${d.ejercicioId}" />
-                                <input type="hidden" name="detalleId" th:value="${d.detalleId}" />
-                                <input class="small" type="text" name="dia" th:value="${d.diaSemana}" />
-                            </td>
+                                <input type="hidden" name="dia" />
+                                <input type="hidden" name="series" />
+                                <input type="hidden" name="repeticiones" />
+                            </form>
 
-                            <td>
-                                <input class="num" type="number" name="series" min="0" th:value="${d.series != null ? d.series : ''}" />
-                            </td>
+                            <!-- Edit button: no Thymeleaf expression in onclick, only data-* attrs -->
+                            <button type="button" class="edit-btn"
+                                    th:attr="data-rutina=${rv.rutina.id}, data-detalle=${d.detalleId}, data-ej=${d.ejercicioId}, data-fallback=${d.detalleId == null ? 'true' : 'false'}"
+                                    onclick="submitRowEdit(this)">Editar</button>
 
-                            <td>
-                                <input class="num" type="number" name="repeticiones" min="0" th:value="${d.repeticiones != null ? d.repeticiones : ''}" />
-                            </td>
-
-                            <td>
-                                <!-- Eliminar detalle: POST al endpoint existente -->
-                                <form th:action="@{|/instructor/rutinas/${rv.rutina.id}/detalles/eliminar/${d.detalleId}|}" method="post" style="display:inline" onsubmit="return confirm('¿Eliminar ejercicio de la rutina?');">
+                            <!-- Delete per-row (keeps existing behavior) -->
+                            <span style="display:inline-block;margin-left:.5rem">
+                                <form th:if="${d.detalleId != null}" th:action="@{|/instructor/rutinas/${rv.rutina.id}/detalles/eliminar/${d.detalleId}|}" method="post" style="display:inline" onsubmit="return confirm('¿Eliminar ejercicio de la rutina?');">
                                     <input type="hidden" th:if="${_csrf != null}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
                                     <button class="small-btn btn-delete" type="submit">Eliminar</button>
                                 </form>
-                            </td>
-                        </tr>
-                        </tbody>
-                    </table>
-                </form>
+                                <form th:unless="${d.detalleId != null}" th:action="@{|/instructor/rutinas/${rv.rutina.id}/detalles/eliminar|}" method="post" style="display:inline" onsubmit="return confirm('¿Eliminar ejercicio de la rutina?');">
+                                    <input type="hidden" th:if="${_csrf != null}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                                    <input type="hidden" name="ejercicioId" th:value="${d.ejercicioId}" />
+                                    <input type="hidden" name="diaSemana" th:value="${d.diaSemana}" />
+                                    <button class="small-btn btn-delete" type="submit">Eliminar</button>
+                                </form>
+                            </span>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
 
-                <!-- Agregar nuevo detalle (no modificado) -->
+                <!-- Agregar nuevo detalle -->
                 <div style="margin-top:0.75rem">
                     <form th:action="@{|/instructor/rutinas/${rv.rutina.id}/detalles/agregar|}" method="post" class="form-inline">
                         <input type="hidden" th:if="${_csrf != null}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
-                        <select name="ejercicioId" class="small" required>
+                        <select name="ejercicioId" class="small-input" required>
                             <option value="">-- Ejercicio --</option>
                             <option th:each="e : ${ejercicios}" th:value="${e.id}" th:text="${e.nombre}">Ejercicio</option>
                         </select>
 
-                        <input type="text" name="diaSemana" class="small" placeholder="Día (lunes, martes...)" />
-                        <input type="number" name="series" class="small" placeholder="Series" min="1" />
-                        <input type="number" name="repeticiones" class="small" placeholder="Repeticiones" min="1" />
+                        <input type="text" name="diaSemana" class="small-input" placeholder="Día (lunes, martes...)" />
+                        <input type="number" name="series" class="small-input" placeholder="Series" min="1" style="width:100px"/>
+                        <input type="number" name="repeticiones" class="small-input" placeholder="Repeticiones" min="1" style="width:120px"/>
 
                         <button type="submit" class="small-btn btn-assign">Agregar</button>
                     </form>
@@ -160,16 +171,11 @@
 </main>
 
 <script>
-    // Solo JS mínimo: abrir/ cerrar detalles y filtrado. No intercepta submits EXCEPTO para:
-    // - confirmar + AJAX-delete (rutina o detalle)
-    // - interceptar submit del form-detalles-{id} para mostrar payload (alert) antes de enviar y luego enviar por fetch
-    // Esto ayuda a depurar por qué antes no se guardaba.
     function toggleDetails(btn) {
         const header = btn.closest('.rutina-header');
         const body = header.nextElementSibling;
         if (!body) return;
         const isOpen = body.classList.contains('open');
-        // Cerrar otros
         document.querySelectorAll('.rutina-body.open').forEach(b => {
             if (b !== body) {
                 b.classList.remove('open');
@@ -199,96 +205,52 @@
         });
     }
 
-    // --- AJAX handlers (with alert payload) ---
-    document.addEventListener('submit', async function (ev) {
-        const form = ev.target;
-        if (!(form instanceof HTMLFormElement)) return;
+    // submitRowEdit: recibe el botón, lee dataset y copia los inputs visibles de la fila
+    // a los campos ocultos del formulario correspondiente y lo envía.
+    function submitRowEdit(button) {
+        try {
+            const btn = button;
+            const rutinaId = btn.dataset.rutina;
+            const detalleId = btn.dataset.detalle;
+            const ejercicioId = btn.dataset.ej;
+            const isFallback = btn.dataset.fallback === 'true';
 
-        const action = (form.getAttribute('action') || '');
+            const tr = btn.closest('tr');
+            if (!tr) return alert('Fila no encontrada');
 
-        // 1) Si es form de GUARDAR detalles -> interceptar para mostrar payload y enviar por fetch POST
-        if (action.includes('/detalles/guardar')) {
-            ev.preventDefault();
+            // localizar los visibles en la misma fila
+            const diaInput = tr.querySelector('.row-dia');
+            const seriesInput = tr.querySelector('.row-series');
+            const repInput = tr.querySelector('.row-repes');
 
-            // Build FormData and prepare debug object
-            const fd = new FormData(form);
-            const debug = {};
-            fd.forEach((v,k) => {
-                if (!debug[k]) debug[k] = [];
-                debug[k].push(v);
-            });
+            const diaVal = diaInput ? diaInput.value : '';
+            const seriesVal = seriesInput ? seriesInput.value : '';
+            const repesVal = repInput ? repInput.value : '';
 
-            // Show alert with payload (user requested)
-            alert('Datos que se enviarán (payload):\n' + JSON.stringify(debug, null, 2));
-
-            try {
-                // Send POST as FormData so Spring receives same parameters
-                const resp = await fetch(action, {
-                    method: 'POST',
-                    body: fd,
-                    credentials: 'same-origin',
-                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
-                });
-                if (resp.ok) {
-                    alert('Guardado correctamente.');
-                    // reload to reflect server changes
-                    location.reload();
-                } else {
-                    const text = await resp.text().catch(()=>resp.statusText||'Error');
-                    alert('Error guardando en el servidor: ' + (text || resp.status));
-                    console.error('Error save:', resp.status, text);
-                }
-            } catch (err) {
-                console.error('Network error al guardar:', err);
-                alert('Error de red al guardar. Revisa la consola.');
+            if (!isFallback) {
+                // detalleId path
+                const formId = 'row-edit-form-' + detalleId;
+                const form = document.getElementById(formId);
+                if (!form) return alert('Formulario de edición no encontrado (detalleId).');
+                form.querySelector('input[name="dia"]').value = diaVal;
+                form.querySelector('input[name="series"]').value = seriesVal;
+                form.querySelector('input[name="repeticiones"]').value = repesVal;
+                form.submit();
+            } else {
+                // fallback path by ejercicioId
+                const formId = 'row-edit-form-fallback-' + rutinaId + '-' + ejercicioId;
+                const form = document.getElementById(formId);
+                if (!form) return alert('Formulario de edición fallback no encontrado.');
+                form.querySelector('input[name="dia"]').value = diaVal;
+                form.querySelector('input[name="series"]').value = seriesVal;
+                form.querySelector('input[name="repeticiones"]').value = repesVal;
+                form.submit();
             }
-            return;
+        } catch (err) {
+            console.error('submitRowEdit error', err);
+            alert('Error al intentar editar la fila (mira consola).');
         }
-
-        // 2) Si es formulario de eliminación (detalle o rutina) -> confirm and AJAX POST
-        if (action.includes('/detalles/eliminar') || action.includes('/eliminar')) {
-            // we still show confirm via onsubmit attribute in markup but double-check
-            if (!confirm('¿Confirmas que quieres eliminar?')) {
-                ev.preventDefault();
-                return;
-            }
-            ev.preventDefault();
-            try {
-                const fd = new FormData(form);
-                const resp = await fetch(action, {
-                    method: 'POST',
-                    body: fd,
-                    credentials: 'same-origin',
-                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
-                });
-                if (resp.ok) {
-                    // remove row if detalle delete
-                    if (action.includes('/detalles/eliminar')) {
-                        const tr = form.closest('tr');
-                        if (tr) tr.remove();
-                        else location.reload();
-                    } else {
-                        // routine deleted
-                        const block = form.closest('.rutina-block');
-                        if (block) block.remove();
-                        else location.reload();
-                    }
-                } else {
-                    const text = await resp.text().catch(()=>resp.statusText||'Error');
-                    alert('Error al eliminar en el servidor: ' + (text || resp.status));
-                    console.error('Error delete:', resp.status, text);
-                }
-            } catch (err) {
-                console.error('Network error al eliminar:', err);
-                alert('Error de red al eliminar. Revisa la consola.');
-            }
-            return;
-        }
-
-        // otherwise let the form submit normally (e.g., agregar)
-    }, true); // capture phase to ensure we catch submits
-
-    // end AJAX handlers
+    }
 </script>
 </body>
 </html>

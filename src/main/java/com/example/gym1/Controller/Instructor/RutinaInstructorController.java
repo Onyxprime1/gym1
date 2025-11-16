@@ -7,6 +7,7 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.EntityTransaction;
 import jakarta.persistence.PersistenceContext;
+import jakarta.persistence.Query;
 import jakarta.servlet.http.HttpSession;
 import org.hibernate.exception.SQLGrammarException;
 import org.slf4j.Logger;
@@ -23,10 +24,10 @@ import java.util.*;
 import java.util.function.Consumer;
 
 /**
- * Controlador completo para manejo de rutinas e detalles.
- * - Detecta dinámicamente el nombre de la columna PK en rutina_detalle para evitar referencias a "id" que no existan.
- * - Usa consultas nativas con mapeo defensivo.
- * - Todos los endpoints usan POST donde tu app ya espera POST (no PUT/DELETE desde JS).
+ * Controlador para manejo de rutinas e detalles.
+ * - Mantiene la lógica existente que ya funcionaba.
+ * - Añade edición por-celda: endpoints que actualizan sólo la celda enviada.
+ * - Eliminaciones son conservadoras y siempre incluyen condiciones WHERE.
  */
 @Controller
 @RequestMapping("/instructor/rutinas")
@@ -294,15 +295,11 @@ public class RutinaInstructorController {
 
                     // intentar mapear conservadoramente
                     if (row.length >= 5) {
-                        // buscar primero una columna numérica plausible para ejercicioId
-                        // (no asumimos posición fija en este fallback)
                         for (Object col : row) {
                             if (col instanceof Number && ejercicioId == null) {
                                 ejercicioId = ((Number) col).intValue();
                             }
                         }
-                        // intenta asignaciones por posición si no están vacías
-                        // (este bloque es un simple fallback para mostrar datos en el form de edición)
                         if (row.length >= 2) {
                             ejercicioId = (row[1] instanceof Number) ? ((Number) row[1]).intValue() : ejercicioId;
                         }
@@ -347,6 +344,7 @@ public class RutinaInstructorController {
         return "instructor/rutina-form";
     }
 
+    // --- guardar / agregar / eliminar existentes (sin cambios funcionales previos) ---
     @PostMapping("/guardar")
     public String guardarRutina(@ModelAttribute Rutina rutina,
                                 @RequestParam(value = "ejercicioId", required = false) List<Integer> ejercicioIds,
@@ -449,12 +447,23 @@ public class RutinaInstructorController {
         runInIsolatedEm(emIso -> {
             String detCol = getDetalleIdColumn();
             if (detCol != null && !detCol.isEmpty()) {
-                emIso.createNativeQuery("DELETE FROM rutina_detalle WHERE " + detCol + " = ?1")
-                        .setParameter(1, did)
-                        .executeUpdate();
+                try {
+                    emIso.createNativeQuery("DELETE FROM rutina_detalle WHERE " + detCol + " = ?1 AND id_rutina = ?2")
+                            .setParameter(1, did)
+                            .setParameter(2, rutinaId)
+                            .executeUpdate();
+                } catch (Exception ex) {
+                    logger.warn("Could not delete by detected column {}, attempting fallback id: {}", detCol, ex.getMessage());
+                    emIso.createNativeQuery("DELETE FROM rutina_detalle WHERE id = ?1 AND id_rutina = ?2")
+                            .setParameter(1, did).setParameter(2, rutinaId).executeUpdate();
+                }
             } else {
-                // fallback: intentar con 'id'
-                emIso.createNativeQuery("DELETE FROM rutina_detalle WHERE id = ?1").setParameter(1, did).executeUpdate();
+                try {
+                    emIso.createNativeQuery("DELETE FROM rutina_detalle WHERE id = ?1 AND id_rutina = ?2")
+                            .setParameter(1, did).setParameter(2, rutinaId).executeUpdate();
+                } catch (Exception ex) {
+                    logger.warn("Fallback delete by id failed for detalleId {}: {}", did, ex.getMessage());
+                }
             }
         });
 
@@ -463,13 +472,13 @@ public class RutinaInstructorController {
 
     @PostMapping("/{rutinaId}/detalles/eliminar")
     public String eliminarDetalleFallback(@PathVariable Integer rutinaId,
-                                          @RequestParam(value = "ejercicioId", required = false) Integer ejercicioId,
+                                          @RequestParam(value = "ejercicioId", required = false) String ejercicioIdRaw,
                                           @RequestParam(value = "diaSemana", required = false) String diaSemana,
                                           HttpSession session) {
         Integer uid = (Integer) session.getAttribute("uid");
         if (uid == null) return "redirect:/login";
         final Integer rid = rutinaId;
-        final Integer ejId = ejercicioId;
+        final Integer ejId = parseIntOrNull(ejercicioIdRaw);
         final String dia = diaSemana;
 
         runInIsolatedEm(emIso -> {
@@ -479,6 +488,8 @@ public class RutinaInstructorController {
                         .setParameter(2, ejId)
                         .setParameter(3, dia)
                         .executeUpdate();
+            } else {
+                logger.debug("eliminarDetalleFallback received insufficient params: ejercicioId={}, dia={}", ejercicioIdRaw, dia);
             }
         });
 
@@ -499,80 +510,107 @@ public class RutinaInstructorController {
         return "redirect:/instructor/rutinas";
     }
 
-    @PostMapping("/{rutinaId}/detalles/guardar")
-    public String guardarDetallesYRutina(
-            @PathVariable Integer rutinaId,
-            @RequestParam(value = "nombre", required = false) String nombre,
-            @RequestParam(value = "descripcion", required = false) String descripcion,
-            @RequestParam(value = "detalleId", required = false) List<Integer> detalleIds,
-            @RequestParam(value = "ejercicioId", required = false) List<Integer> ejercicioIds,
-            @RequestParam(value = "dia", required = false) List<String> dias,
-            @RequestParam(value = "series", required = false) List<Integer> seriesList,
-            @RequestParam(value = "repeticiones", required = false) List<Integer> repesList,
-            HttpSession session
-    ) {
+    // --- NUEVOS: editar por-celda (por detalleId) o por combinación (fallback) ---
+
+    /**
+     * Edita solo las columnas enviadas para un detalle identificado por detalleId.
+     * Parámetros opcionales: dia, series, repeticiones.
+     * Actualiza únicamente las columnas no nulas en la petición.
+     */
+    @PostMapping("/{rutinaId}/detalles/editar/{detalleId}")
+    public String editarDetallePorId(@PathVariable Integer rutinaId,
+                                     @PathVariable Integer detalleId,
+                                     @RequestParam(value = "dia", required = false) String dia,
+                                     @RequestParam(value = "series", required = false) Integer series,
+                                     @RequestParam(value = "repeticiones", required = false) Integer repeticiones,
+                                     HttpSession session) {
+        Integer uid = (Integer) session.getAttribute("uid");
+        if (uid == null) return "redirect:/login";
+        final Integer did = detalleId;
+        final String newDia = (dia != null && !dia.isBlank()) ? dia.trim() : null;
+        final Integer newSeries = series;
+        final Integer newRepes = repeticiones;
+        final String detCol = getDetalleIdColumn();
+
+        runInIsolatedEm(emIso -> {
+            try {
+                StringBuilder sql = new StringBuilder("UPDATE rutina_detalle SET ");
+                List<Object> values = new ArrayList<>();
+                boolean first = true;
+                if (newDia != null) { if (!first) sql.append(", "); sql.append("dia_semana = ?"); values.add(newDia); first = false; }
+                if (newSeries != null) { if (!first) sql.append(", "); sql.append("series = ?"); values.add(newSeries); first = false; }
+                if (newRepes != null) { if (!first) sql.append(", "); sql.append("repeticiones = ?"); values.add(newRepes); first = false; }
+
+                if (!values.isEmpty()) {
+                    if (detCol != null && !detCol.isEmpty()) {
+                        sql.append(" WHERE ").append(detCol).append(" = ?").append(values.size() + 1).append(" AND id_rutina = ?").append(values.size() + 2);
+                    } else {
+                        sql.append(" WHERE id = ?").append(values.size() + 1).append(" AND id_rutina = ?").append(values.size() + 2);
+                    }
+                    Query q = emIso.createNativeQuery(sql.toString());
+                    int idx = 1;
+                    for (Object v : values) { q.setParameter(idx++, v); }
+                    q.setParameter(idx++, did);
+                    q.setParameter(idx, rutinaId);
+                    q.executeUpdate();
+                } else {
+                    logger.debug("editarDetallePorId called without fields to update (detalleId={})", did);
+                }
+            } catch (Exception ex) {
+                logger.warn("editarDetallePorId failed for detalleId {}: {}", did, ex.getMessage(), ex);
+            }
+        });
+
+        return "redirect:/instructor/rutinas";
+    }
+
+    /**
+     * Fallback: editar por combinación (id_rutina, id_ejercicio, dia).
+     * Si no existe fila para la combinación, inserta una nueva fila con los valores enviados.
+     */
+    @PostMapping("/{rutinaId}/detalles/editar")
+    public String editarDetalleFallback(@PathVariable Integer rutinaId,
+                                        @RequestParam(value = "ejercicioId", required = false) String ejercicioIdRaw,
+                                        @RequestParam(value = "dia", required = false) String dia,
+                                        @RequestParam(value = "series", required = false) Integer series,
+                                        @RequestParam(value = "repeticiones", required = false) Integer repeticiones,
+                                        HttpSession session) {
         Integer uid = (Integer) session.getAttribute("uid");
         if (uid == null) return "redirect:/login";
 
-        final Integer rid = rutinaId;
-        final String n = nombre;
-        final String d = descripcion;
-        final String detCol = getDetalleIdColumn();
+        final Integer ejId = parseIntOrNull(ejercicioIdRaw);
+        final String finalDia = (dia != null && !dia.isBlank()) ? dia.trim() : null;
+        final Integer s = series;
+        final Integer r = repeticiones;
 
-        if ((n != null && !n.isBlank()) || (d != null)) {
-            txTemplate.execute(status -> {
-                em.createQuery("UPDATE Rutina r SET r.nombre = :n, r.descripcion = :d WHERE r.id = :id")
-                        .setParameter("n", n != null ? n : "")
-                        .setParameter("d", d != null ? d : "")
-                        .setParameter("id", rid)
+        if (ejId == null || finalDia == null) {
+            logger.debug("editarDetalleFallback: insufficient params ejId={}, dia={}", ejercicioIdRaw, dia);
+            return "redirect:/instructor/rutinas";
+        }
+
+        runInIsolatedEm(emIso -> {
+            try {
+                int updated = emIso.createNativeQuery("UPDATE rutina_detalle SET dia_semana = ?1, series = ?2, repeticiones = ?3 WHERE id_rutina = ?4 AND id_ejercicio = ?5 AND dia_semana = ?6")
+                        .setParameter(1, finalDia)
+                        .setParameter(2, s)
+                        .setParameter(3, r)
+                        .setParameter(4, rutinaId)
+                        .setParameter(5, ejId)
+                        .setParameter(6, finalDia)
                         .executeUpdate();
-                return null;
-            });
-        }
-
-        if (detalleIds != null && !detalleIds.isEmpty()) {
-            int nRows = detalleIds.size();
-            for (int i = 0; i < nRows; i++) {
-                final int idx = i;
-                final Integer did = detalleIds.get(i);
-                final Integer ejId = (ejercicioIds != null && ejercicioIds.size() > i) ? ejercicioIds.get(i) : null;
-                final String dia = (dias != null && dias.size() > i) ? dias.get(i) : null;
-                final Integer s = (seriesList != null && seriesList.size() > i) ? seriesList.get(i) : null;
-                final Integer rVal = (repesList != null && repesList.size() > i) ? repesList.get(i) : null;
-
-                try {
-                    txTemplate.execute(status -> {
-                        if (did != null) {
-                            // usar la columna detectada si existe
-                            if (detCol != null && !detCol.isEmpty()) {
-                                em.createNativeQuery("UPDATE rutina_detalle SET series = ?1, repeticiones = ?2 WHERE " + detCol + " = ?3")
-                                        .setParameter(1, s)
-                                        .setParameter(2, rVal)
-                                        .setParameter(3, did)
-                                        .executeUpdate();
-                            } else {
-                                em.createNativeQuery("UPDATE rutina_detalle SET series = ?1, repeticiones = ?2 WHERE id = ?3")
-                                        .setParameter(1, s)
-                                        .setParameter(2, rVal)
-                                        .setParameter(3, did)
-                                        .executeUpdate();
-                            }
-                        } else if (ejId != null && dia != null) {
-                            em.createNativeQuery("UPDATE rutina_detalle SET series = ?1, repeticiones = ?2 WHERE id_rutina = ?3 AND id_ejercicio = ?4 AND dia_semana = ?5")
-                                    .setParameter(1, s)
-                                    .setParameter(2, rVal)
-                                    .setParameter(3, rid)
-                                    .setParameter(4, ejId)
-                                    .setParameter(5, dia)
-                                    .executeUpdate();
-                        }
-                        return null;
-                    });
-                } catch (Exception ex) {
-                    logger.warn("fallo tx al actualizar detalle (fila {}): {}", idx, ex.getMessage(), ex);
+                if (updated == 0) {
+                    emIso.createNativeQuery("INSERT INTO rutina_detalle (id_rutina, id_ejercicio, dia_semana, series, repeticiones) VALUES (?1, ?2, ?3, ?4, ?5)")
+                            .setParameter(1, rutinaId)
+                            .setParameter(2, ejId)
+                            .setParameter(3, finalDia)
+                            .setParameter(4, s)
+                            .setParameter(5, r)
+                            .executeUpdate();
                 }
+            } catch (Exception ex) {
+                logger.warn("editarDetalleFallback failed: {}", ex.getMessage(), ex);
             }
-        }
+        });
 
         return "redirect:/instructor/rutinas";
     }
@@ -621,6 +659,21 @@ public class RutinaInstructorController {
             if (ej != null && ej.getNombre() != null) return ej.getNombre();
         } catch (Exception ignored) {}
         return "Ejercicio";
+    }
+
+    // util helpers
+    private Integer parseIntOrNull(String s) {
+        if (s == null) return null;
+        s = s.trim();
+        if (s.isEmpty()) return null;
+        try { return Integer.valueOf(s); } catch (NumberFormatException ex) { return null; }
+    }
+
+    private List<Integer> parseStringListToIntListPreserveNulls(List<String> raw) {
+        if (raw == null) return Collections.emptyList();
+        List<Integer> out = new ArrayList<>(raw.size());
+        for (String s : raw) out.add(parseIntOrNull(s));
+        return out;
     }
 
     // Clases internas usadas por la vista
